@@ -1,0 +1,36 @@
+###
+# Annotation functions and classes
+# M2 Bio-info 2025 - OOP - Project 1
+# Gwendoline & Vincent
+###
+
+class Element:
+    '''
+    Represents an element of interest
+    '''
+    
+    def __init__(self, name, elem_type):
+        self.name = name # The element's name (eg P06132 or SOX2)
+        self.type = elem_type # The element's type (Protein or Gene)
+        self.parent = None # A GOTerm object as parent
+
+class GOTerm:
+    '''
+    Represents a GeneOntology term
+    '''
+    def __init__(self, term):
+        self.term = term
+        self.parent = []
+        self.children = []
+        self.IC = 0
+        self.coverage = 0
+        self.fdr = 0
+        self.cover_elements = set()
+
+    def add_parent(self, other_parent: GOTerm):
+        self.parent.append(other_parent)
+
+    def add_child(self, child: GOTerm):
+        self.children.append(child)
+
+    
