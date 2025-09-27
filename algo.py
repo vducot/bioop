@@ -7,6 +7,8 @@
 import math
 import annot
 import sys
+from typing import Tuple
+import numpy as np
 
 class AnnotMatrix:
     '''
@@ -17,7 +19,7 @@ class AnnotMatrix:
         elements_number = len(elements_list)
         annot_number = len(annot_list)
 
-    def generate_whole_matrix(self, gaf_file):
+    def generate_whole_matrix(self, gaf_file) -> Tuple[np.ndarray, list[annot.Element], list[annot.GOTerm]]:
         '''
         Generate the matrix representing all the annotations for all the elements, based on the gaf_file
         Initialize a list with all elements of the gaf file and another with all annotations
@@ -42,7 +44,7 @@ class AnnotMatrix:
             print("An error occurred while reading the file {gaf_file}.")
             sys.exit(1)
 
-def compute_IC(annot, wag):
+def compute_IC(annot, wag) -> float:
     '''
     Compute the Information Content index
     IC(a) = -log2(p(a)) with p(a) = len(annotedBy(a) in total elements) / len(total_elements)
@@ -51,7 +53,7 @@ def compute_IC(annot, wag):
         The annotation to compute as a GOTerm object
         An AnnotMatrix object
     Returns
-        The Information Content index
+        The Information Content index as a float
     Exception
         ValueError if the given annotation is not in our database
     '''
@@ -65,7 +67,7 @@ def compute_IC(annot, wag):
     p = sum(wag.matrix[annot_index]) / wag.elements_number
     return -math.log(p, 2)
 
-def compute_score(annot, eoi, wag):
+def compute_score(annot, eoi, wag) -> float:
     '''
     Compute a score of an annotation that reflects :
     - its general relevance
@@ -76,7 +78,7 @@ def compute_score(annot, eoi, wag):
         Elements of interest, as a list of Element objects
         An AnnotMatrix object
     Returns
-        The score as an double
+        The score as an float
     Exception
         None
     '''
@@ -85,6 +87,27 @@ def compute_score(annot, eoi, wag):
         if e.goterm == annot:
             annototed_by_a +=1
     return compute_IC(annot, wag) * annototed_by_a
+
+def get_max_score_element(annot_list) -> annot.GOTerm:
+    '''
+    Get the element with max score in an annotation list
+    Args
+        A list of GOTerm objects
+    Returns
+        The object GOTerm with the max score within the annotations of annot_list
+    Exception
+        ValueError if the list is empty
+    '''
+    if len(annot_list) == 0:
+        ValueError("Error, can get the max score from an empty list")
+
+    max_score = annot_list[0].score
+    max_elt = annot_list[0]
+    for a in annot_list[1:]:
+        if a.score > max_score:
+            max_score = a.score
+            max_elt = a
+    return max_elt
 
 def run_algo(eoi, wag):
     '''
@@ -97,4 +120,16 @@ def run_algo(eoi, wag):
     Exception
         ???
     '''
+    # Initialization
+    summary = ()
+    candidates = annot.get_overrepresented(eoi, ...)
+    elts_annot_by_cand = set()
+    for c in candidates:
+        elts_annot_by_cand.add(c.cover_elements)
+    
+    elts_annot_by_summary = set()
+
+    # Main loop
+    while (len(candidates) != 0 and ???):
+           score_max = get_max_score_element(candidates)
     pass
