@@ -33,17 +33,6 @@ class GOTerm:
     def add_child(self, child: Self):
         self.children.append(child)
 
-    def get_all_ancestors(self) -> list[GOTerm]:
-        '''
-        Args
-            None
-        Returns
-            A list of all GOTerm that are ancestors of the current GOTerm
-        Exception
-            ??
-        '''
-        pass
-
 class Element:
     '''
     Represents an element of interest
@@ -67,7 +56,8 @@ class Element:
             for p in go.parent:
                 ancestors_set.add(p.term)
         return list(ancestors_set)
-    
+
+
 def read_elements(filename: str) -> list[Element]:
     """
     Read a file with one element per line
@@ -78,21 +68,26 @@ def read_elements(filename: str) -> list[Element]:
     Exceptions
         Raises an exception if the file cannot be read
     """
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"Elements file not found: {filename}")
+    
     elements = []
     try:
         with open(filename, "r") as f:
-            for line in f:
+            for i, line in enumerate(f, 1):
                 name = line.strip()
                 if name:
                     elements.append(Element(name))
         return elements
     except Exception as e:
-        raise Exception(f"Error reading elements from file {filename}: {e}")
+        raise IOError(f"Error reading elements file {filename}: {e}")
 
 
-def fetch_annot_from_goatools(elements: list[Element], godag, gaf_file, assoc_pickle = None):
+def fetch_annot_from_goatools(elements: list[Element], godag, assoc: dict):
     """
     Fetch GO annotations from GAF file and keep only biological_process.
+    Uses pickle to save/load associations for speed.
+    Updates cover_elements for all GO terms (direct + ancestors)
     Args
         A list of Element to annotate
         The GO ontology
@@ -101,24 +96,8 @@ def fetch_annot_from_goatools(elements: list[Element], godag, gaf_file, assoc_pi
     Returns
         None (modifies elements in place)
     Exceptions
-        Raises an exception if the GAF file cannot be read
+        None
     """
-    # Optional use of pickle file
-    if assoc_pickle and os.path.exists(assoc_pickle):
-        try:
-            with open(assoc_pickle, "rb") as f:
-                assoc = pickle.load(f)
-        except Exception as e:
-            raise Exception(f"Error reading associations from pickle file {assoc_pickle}: {e}")
-    else:
-        try:
-            assoc = read_gaf(gaf_file, go2geneids=False, prt=None)
-            if assoc_pickle:
-                with open(assoc_pickle, "wb") as f:
-                    pickle.dump(assoc, f)
-        except Exception as e:
-            raise Exception(f"Error reading GAF file {gaf_file}: {e}")
-
     for elem in elements:
         # Direct BP GO terms
         go_ids = [go for go in assoc.get(elem.name, set()) if godag[go].namespace == "biological_process"]
@@ -145,9 +124,51 @@ def fetch_annot_from_goatools(elements: list[Element], godag, gaf_file, assoc_pi
         # Assign only direct GO terms to element
         elem.goterms = [goterms_sub[go_id] for go_id in go_ids]
 
-def build_data(go_obo_file, gaf_file, elements_file, assoc_pickle = None):
+        # Update cover_elements for all GO terms in subgraph
+        for go_obj in goterms_sub.values():
+            go_obj.cover_elements.add(elem.name)
+
+
+def get_overrepresented_terms(elements: list[Element], godag, assoc: dict, pval_threshold: float = 0.05) -> list[GOTerm]:
     """
-    Build the full data structure and return both elements and godag
+    Mark GO terms as overrepresented using GOEnrichmentStudy.
+    Updates fdr and overrepresented flags.
+    Args
+        A list of Element
+        The GO ontology
+        The path to the GAF file
+        The p-value threshold (default 0.05)
+    Returns
+        A list of overrepresented GOTerm
+    Exceptions
+        None
+    """
+    background = list(assoc.keys())
+    study_set = [elem.name for elem in elements]
+
+    goea_obj = GOEnrichmentStudy(background, assoc, godag, methods=["fdr_bh"])
+    results = goea_obj.run_study(study_set)
+
+    # Map GO ID -> existing GOTerm
+    go_to_goterm = {go.term: go for elem in elements for go in elem.goterms}
+    overrep_terms = []
+    for r in results:
+        go_obj = go_to_goterm.get(r.GO, GOTerm(r.GO, "biological_process"))
+
+        go_obj.fdr = r.p_fdr_bh
+        go_obj.overrepresented = r.p_fdr_bh < pval_threshold
+        go_obj.cover_elements.update(r.study_items)
+
+        if go_obj.overrepresented:
+            overrep_terms.append(go_obj)
+
+    return overrep_terms
+
+
+def build_data(go_obo_file, gaf_file, elements_file, assoc_pickle=None, fdr_threshold=0.05):
+    """
+    Build the full data structure: elements, GODag, overrepresented GO terms.
+    Loads GAF / pickle once for efficiency.
     Args
         The path to the GO OBO file
         The path to the GAF file
@@ -160,23 +181,33 @@ def build_data(go_obo_file, gaf_file, elements_file, assoc_pickle = None):
     """
     print("Loading GO ontology...")
     godag = GODag(go_obo_file)
+
     print("Reading elements...")
     elements = read_elements(elements_file)
-    print("Fetching GO annotations...")
-    fetch_annot_from_goatools(elements, godag, gaf_file, assoc_pickle)
-    return elements, godag
 
-def get_overrepresented_terms(elements: list[Element], godag, gaf_file, pval_threshold: float = 0.05) -> list[GOTerm]:
-    """
-    Marqued GO terms as 'overrepresented' if pval < threshold.
-    Args
-        A list of Element
-        The GO ontology
-        The path to the GAF file
-        The p-value threshold (default 0.05)
-    Returns
-        A list of overrepresented GOTerm
-    Exceptions
-        Raises an exception if the GAF file cannot be read
-    """
-    pass
+    # Load or build associations once
+    if assoc_pickle and os.path.exists(assoc_pickle):
+        try:
+            with open(assoc_pickle, "rb") as f:
+                assoc = pickle.load(f)
+            print(f"Loaded associations from pickle: {assoc_pickle}")
+        except Exception as e:
+            raise IOError(f"Failed to load associations from pickle: {e}")
+    else:
+        if not os.path.exists(gaf_file):
+            raise FileNotFoundError(f"GAF file not found: {gaf_file}")
+        try:
+            assoc = read_gaf(gaf_file, go2geneids=False, prt=None)
+            if assoc_pickle:
+                with open(assoc_pickle, "wb") as f:
+                    pickle.dump(assoc, f)
+                print(f"Saved associations to pickle: {assoc_pickle}")
+        except Exception as e:
+            raise IOError(f"Failed to read GAF file {gaf_file}: {e}")
+        
+    print("Fetching GO annotations...")
+    fetch_annot_from_goatools(elements, godag, assoc)
+    print("Identifying overrepresented GO terms...")
+    overrep_terms = get_overrepresented_terms(elements, godag, assoc, pval_threshold=fdr_threshold)
+
+    return elements, godag, overrep_terms
