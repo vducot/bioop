@@ -128,10 +128,10 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
     '''
     # Initialization
     summary = set()
-    candidates = annot.get_overrepresented(eoi, ...) # List
+    candidates = annot.get_overrepresented_terms(eoi, wag.godag, wag.gaf_file) # List
     elts_annot_by_cand = set()
     for c in candidates:
-        elts_annot_by_cand.add(c.cover_elements)
+        elts_annot_by_cand.update(c.cover_elements)
     
     elts_annot_by_summary = set()
 
@@ -144,7 +144,12 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
         cWNS = get_max_score_element(candidates)
 
         # Remove the annotations from cWNS that have a descendant in cWNS with the same coverage (= keep the most precise)
-        #@TODO
+        cWNS_to_remove = set()
+        for a in cWNS:
+            for d in a.children:
+                if d in cWNS and a.cover_elements == d.cover_elements:
+                    cWNS_to_remove.add(a)
+        cWNS -= cWNS_to_remove
 
         # Remove the descendants of cWNS from candidates
         candidates_to_remove = set()
