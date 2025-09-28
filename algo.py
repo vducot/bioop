@@ -88,13 +88,13 @@ def compute_score(annot, eoi, wag) -> float:
             annototed_by_a +=1
     return compute_IC(annot, wag) * annototed_by_a
 
-def get_max_score_element(annot_list) -> annot.GOTerm:
+def get_max_score_element(annot_list) -> set[annot.GOTerm]:
     '''
     Get the element with max score in an annotation list
     Args
         A list of GOTerm objects
     Returns
-        The object GOTerm with the max score within the annotations of annot_list
+        A set of GOTerm objects with the max score within the annotations of annot_list
     Exception
         ValueError if the list is empty
     '''
@@ -107,22 +107,28 @@ def get_max_score_element(annot_list) -> annot.GOTerm:
         if a.score > max_score:
             max_score = a.score
             max_elt = a
-    return max_elt
 
-def run_algo(eoi, wag):
+    # Keep only annotations with the max score
+    annots_with_max_score = set()
+    for a in annot_list:
+        if a.score == max_score:
+            annots_with_max_score.add(a)
+    return annots_with_max_score
+
+def run_algo(eoi, wag) -> set[annot.GOTerm]:
     '''
     Run the algorithm to summarize annotations of a set of elements
     Args
         A list of Elements Of Interest (genes or proteins)
         An AnnotMatrix object
     Returns
-        A list of annotations
+        A set of GOTerm objects that describe the elements of interest with the best compromise between precision and cover
     Exception
         ???
     '''
     # Initialization
-    summary = ()
-    candidates = annot.get_overrepresented(eoi, ...)
+    summary = set()
+    candidates = annot.get_overrepresented(eoi, ...) # List
     elts_annot_by_cand = set()
     for c in candidates:
         elts_annot_by_cand.add(c.cover_elements)
@@ -130,6 +136,72 @@ def run_algo(eoi, wag):
     elts_annot_by_summary = set()
 
     # Main loop
-    while (len(candidates) != 0 and ???):
-           score_max = get_max_score_element(candidates)
+    # While there is still
+    # - candidates and
+    # - elements annotated by candidates but not annotated by summary annotations
+    while (len(candidates) != 0 and len(elts_annot_by_cand) - len(elts_annot_by_cand - elts_annot_by_summary)):
+        # Compute candidates with max score
+        cWNS = get_max_score_element(candidates)
+
+        # Remove the annotations from cWNS that have a descendant in cWNS with the same coverage (= keep the most precise)
+        #@TODO
+
+        # Remove the descendants of cWNS from candidates
+        candidates_to_remove = set()
+        for a in candidates:
+            if a.parent in cWNS or a.parent in candidates_to_remove:
+                candidates_to_remove.add(a)
+
+        # Summary = summary U cWNS
+        summary.update(cWNS)
+
+        # Remove cWNS annotations from candidates, as we add them to summary
+        for a in cWNS:
+            candidates.remove(a)
+
+        # Update elements annotated by candidates and elements annotated by summary
+        for e in eoi:
+            ancestors = e.get_all_ancestors()
+            for a in ancestors:
+                if a in summary:
+                    elts_annot_by_summary.add(e)
+                if a in candidates and e not in elts_annot_by_cand:
+                    elts_annot_by_cand.add(e)
+
+        # Remove from candidates the annotations that are not associated with any element
+        # not yet annotated by summary
+        # @TODO Whyyyy ? ça va pas virer trop de choses dès le début ??
+
+    # Prune redondant annotations from the summary
+    # = annot that are covered by > 1 other annot of the summary ??
+
+    # Annot from summary that have an ancestor in the summary
+    to_remove = set()
+    for annot in summary:
+        ancestors = annot.get_all_ancestors()
+        # That have an ancestor in the summary
+        for ancestor in ancestors:
+            if ancestor in summary:
+                #1 The ancestor annotates >= 1 EOI that is not annotated by any other annot from the summary
+                for elt in ancestor.cover_elements():
+                    elt_anc = elt.get_all_ancestors()
+                    if elt_anc == set(ancestor):
+                        print(f"Annotation {annot.term} marked to prune")
+                        # Discard the descendant
+                        to_remove.add(annot)
+                #2 All the EOI are annotated by >=1 annot from the summary that is different from the ancestor
+                counter = 0
+                for e in eoi:
+                    elt_annots = e.get_all_ancestors()
+                    # Annotations different from the ancestor
+                    annot_diff_from_anc = set(elt_annots) - set(ancestor)
+                    # that are from the summary
+                    annot_is_in_summary = [a for annot in annot_diff_from_anc if a in summary ]
+                    if len(annot_is_in_summary) >= 1:
+                        counter += 1
+                # All the EOI
+                if counter == len(eoi):
+                    # Discard the ancestor
+                    to_remove.add(ancestor)
+
     pass

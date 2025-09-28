@@ -25,6 +25,17 @@ class GOTerm:
     def add_child(self, child: Self):
         self.children.append(child)
 
+    def get_all_ancestors(self) -> list[GOTerm]:
+        '''
+        Args
+            None
+        Returns
+            A list of all GOTerm that are ancestors of the current GOTerm
+        Exception
+            ??
+        '''
+        pass
+
 class Element:
     '''
     Represents an element of interest
