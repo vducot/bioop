@@ -1,62 +1,54 @@
-from goatools.obo_parser import GODag
-from goatools.associations import read_gaf
-#from goatools.anno.gaf_reader import GafReader #j'arrive pas à le faire fonctionner
-from goatools.go_enrichment import GOEnrichmentStudy
-import math
-import os
-#pour la visualisation
-from goatools.gosubdag.gosubdag import GoSubDag
-from goatools.godag_plot import plot_gos #plot_gos_pdf est censé exister
+# test.py
+from annot import build_data
 
-# parameters
-GO_OBO_FILE = "go-basic.obo" # fichier obo pour goatools
-GAF_FILE = "goa_human.gaf" # fichier gaf de l'humain
-PROTEINS_L = ["P06132","P08397","P10746","P13196","P13716","P22557","P22830","P36551","P50336","Q7KZN9","Q12887"] #liste des protéines d'intérêt
-FDR_THRESHOLD = 0.05 #comment choisir ce seuil?
+GO_OBO_FILE = "go-basic.obo"
+GAF_FILE = "goa_human.gaf"
+PROTEINS_FILE = r"datasets\dataset04.csv"
+ASSOC_PICKLE = "assoc.pkl"
+FDR_THRESHOLD = 0.05
 
-print("Chargement de l'ontologie GO...")
-go_dag = GODag(GO_OBO_FILE)
-#print(go_dag)
-print("Lecture du fichier GAF...")
-assoc = read_gaf(GAF_FILE)
-print(assoc)
+def summarize_per_element(elements, include_ancestors=False):
+    print("\n=== Per-element GO summary ===\n")
 
-# étape1 : test de surreprésentation
-#de ce que j'ai compris: GOEnrichmentStudy prépare le test avec background + associations GO + hiérarchie
-goea_obj = GOEnrichmentStudy(
-    list(assoc.keys()),  # toutes les protéines annotées dans le GAF
-    assoc,               # dictionnaire protéine -> set(GO)
-    go_dag,
-    methods=["fdr_bh"] #quel méthode de correction utiliser ? (fdr_bh, bonferroni, holm, sidak, none)
-    #pvalcalc='fisher_scipy_stats' # methode de calcul du p-value par défaut #aucune idée de ce que ça change
-)
-# puis run_study(PROTEINS_L) teste chaque GO pour savoir s’il est surreprésenté dans le set d’intérêt
-print(goea_obj)
+    for elem in elements:
+        direct_go = elem.goterms
+        if include_ancestors:
+            total_go = set(direct_go)
+            for go in direct_go:
+                total_go.update(go.parent)
+        else:
+            total_go = set(direct_go)
 
-results = goea_obj.run_study(PROTEINS_L)
+        overrep_go = [go for go in total_go if go.overrepresented]
 
-# étape2 : selection des candidats
-#dans la doc:
-#r.GO          # ID du GO term
-#r.name        # nom du terme GO
-#r.p_uncorrected  # p-value brute
-#r.p_fdr_bh       # p-value corrigée FDR
-#r.study_count    # nombre de protéines de ton set d’intérêt annotées avec ce GO
-#r.pop_count      # nombre de protéines du background annotées avec ce GO
-candidats = [r.GO for r in results if r.p_fdr_bh < FDR_THRESHOLD]
-#print(candidats)
-candidats_info = [(r.GO, r.name, r.p_fdr_bh) for r in results if r.p_fdr_bh < FDR_THRESHOLD]
-#print(candidats_info)
+        print(f"Element: {elem.name}")
+        print(f"  # Direct GO: {len(direct_go)}")
+        print(f"  # Total GO: {len(total_go)}")
+        print(f"  Direct GO terms: {', '.join(go.term for go in direct_go)}")
+        print(f"  Overrepresented GO terms ({len(overrep_go)}): {', '.join(go.term for go in overrep_go)}\n")
 
-#test visalisation
-#gosubdag = GoSubDag(candidats, go_dag)
-#go_ids = list(gosubdag.keys())
-#plot_gos("candidats_GO.png", go_ids, go_dag)
-#plot_gos("candidats_GO.png", candidats, go_dag)
-#ça marche pas, je sais pas pourquoi
+def summarize_global(elements):
+    print("\n=== Global GO summary ===\n")
+    all_go = {go for elem in elements for go in elem.goterms}
+    overrep_go = [go for go in all_go if go.overrepresented]
+
+    print(f"Total GO terms found: {len(all_go)}")
+    print(f"Total overrepresented GO terms: {len(overrep_go)}\n")
+
+    if overrep_go:
+        print("Top overrepresented GO terms (sorted by FDR, up to 10):")
+        for go in sorted(overrep_go, key=lambda g: g.fdr)[:10]:
+            print(f"- {go.term} | NS: {go.namespace} | FDR: {go.fdr:.3e} | Covered elements: {len(go.cover_elements)}")
+    print("\n")
 
 
-# faire dic des protéines associées à chaque GO
-#ajouter le label de surassociation
-
-#utilise les excels à la con 
+# Main execution
+if __name__ == "__main__":
+    print("Building GO data...")
+    elements, godag, overrep_terms = build_data(
+        GO_OBO_FILE, GAF_FILE, PROTEINS_FILE, ASSOC_PICKLE, fdr_threshold=FDR_THRESHOLD
+    )
+    # Summary per element
+    summarize_per_element(elements, include_ancestors=True)
+    # Global summary
+    summarize_global(elements)
