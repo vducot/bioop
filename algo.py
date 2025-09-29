@@ -9,6 +9,12 @@ import annot
 import sys
 from typing import Tuple
 import numpy as np
+import pandas as pd
+from icecream import ic
+
+def main():
+    annotMatrix = AnnotMatrix("files/goa_human.gaf")
+
 
 class AnnotMatrix:
     '''
@@ -22,27 +28,64 @@ class AnnotMatrix:
     def generate_whole_matrix(self, gaf_file) -> Tuple[np.ndarray, list[annot.Element], list[annot.GOTerm]]:
         '''
         Generate the matrix representing all the annotations for all the elements, based on the gaf_file
-        Initialize a list with all elements of the gaf file and another with all annotations
+        Initialize a dict with all elements of the gaf file and another with all annotations
         Create a matrix where [i,j] = 1 if the element j is annoted by the annotation i
         Args
             The GAF filename to read
         Returns
             The matrix
-            A list of all elements
-            A list of all annotations
+            A dict of all elements with their index
+            A dict of all annotations with their index
         Exception
-            IOError or FileNotFoundError
+            FileNotFoundError or ParserError or Exception
         '''
-        try:
-            with open(gaf_file, 'r'):
-            # Load in memory
-                pass
-        except FileNotFoundError:
-            print(f"The file {gaf_file} was not found.")
-            sys.exit(1)
-        except IOError:
-            print("An error occurred while reading the file {gaf_file}.")
-            sys.exit(1)
+        # Column 1 is Uniprot ID, 4 is ID GO and 8 the GO Aspect
+        df = pd.read_csv(gaf_file, sep='\t', comment='!', header=None, usecols=[1,4,8], nrows = 5000)
+        ic(df.shape)
+        # Filter on "Biological Process"
+        df = df[df[8] == 'P']
+        print(df.head)
+        # Get unique IDs and init the matrix with zeros
+        # Column 4 is ID GO
+        go_unique_number = len(df[4].unique())
+        # Column 1 is Uniprot ID
+        element_unique_number= len(df[1].unique())
+
+        matrix = np.zeros((go_unique_number, element_unique_number), dtype=int)
+
+        go_ids = dict()
+        element_ids = dict()
+        # Read all GAF file and set (i,j) to 1 in the matrix if i annotates j
+        ic(df.shape)
+        for i, row in df.iterrows():
+            e_id = row[1]
+            go_id = row[4]
+            # Check if we have already seen this element
+            if e_id in element_ids.keys():
+                # Fetch the index in the matrix
+                e_index = element_ids[e_id]
+            else:
+                # Add the element to the dict
+                element_ids[e_id] = len(element_ids)
+                e_index = element_ids[e_id]
+
+            # Same for the GO terms
+            if go_id in go_ids.keys():
+                # Fetch the index in the matrix
+                go_index = go_ids[go_id]
+            else:
+                # Add the element to the dict
+                go_ids[go_id] = len(go_ids)
+                go_index = go_ids[go_id]
+
+            matrix[go_index, e_index] = 1
+
+        #ic(go_ids)
+        #ic(element_ids)
+        #np.set_printoptions(threshold=sys.maxsize)
+        #print(matrix)
+        ic(matrix.shape)
+        return matrix, go_ids, element_ids
 
 def compute_IC(annot, wag) -> float:
     '''
@@ -175,7 +218,12 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
 
         # Remove from candidates the annotations that are not associated with any element
         # not yet annotated by summary
-        # @TODO Whyyyy ? ça va pas virer trop de choses dès le début ??
+        for a in candidates:
+            # If intersection with elts_annot_by_summary and a.cover_elements is empty
+            if len(a.cover_elements & elts_annot_by_summary) == 0:
+                # Remove the annot from candidates
+                candidates.remove(a)
+
 
     # Prune redondant annotations from the summary
     # = annot that are covered by > 1 other annot of the summary ??
@@ -208,5 +256,9 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
                 if counter == len(eoi):
                     # Discard the ancestor
                     to_remove.add(ancestor)
+    summary = summary - to_remove
 
-    pass
+    return summary
+
+if __name__ == '__main__':
+    main()
