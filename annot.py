@@ -5,10 +5,10 @@
 ###
 from typing import Self
 import os
+import sys
 import pickle
 from goatools.obo_parser import GODag
 from goatools.associations import read_gaf
-from goatools.gosubdag.gosubdag import GoSubDag
 from goatools.go_enrichment import GOEnrichmentStudy
 
 class GOTerm:
@@ -85,19 +85,27 @@ def read_elements(filename: str) -> list[Element]:
 
 def fetch_annot_from_goatools(elements: list[Element], godag, assoc: dict):
     """
+    Precompute parents/children using goatools.
     Fetch GO annotations from GAF file and keep only biological_process.
     Uses pickle to save/load associations for speed.
     Updates cover_elements for all GO terms (direct + ancestors)
     Args
         A list of Element to annotate
         The GO ontology
-        The path to the GAF file
-        The optional path to a pickle file to save/load the associations
+        A GAF file
     Returns
         None (modifies elements in place)
     Exceptions
         None
     """
+    # Precompute parent/child mapping
+    go2parents = {go_id: set() for go_id in godag.keys()}
+    go2children = {go_id: set() for go_id in godag.keys()}
+    for go_id, go_obj in godag.items():
+        for parent in go_obj.parents:
+            go2parents[go_id].add(parent.id)
+            go2children[parent.id].add(go_id)
+
     for elem in elements:
         # Direct BP GO terms
         go_ids = [go for go in assoc.get(elem.name, set()) if godag[go].namespace == "biological_process"]
@@ -106,20 +114,23 @@ def fetch_annot_from_goatools(elements: list[Element], godag, assoc: dict):
 
         # Directs GO + all ancestors through is_a relationship
         all_go_ids = set(go_ids) # subgraph of all relevant GO terms (direct + ancestors)
-        for go_id in go_ids:
-            gosubdag_tmp = GoSubDag([go_id], godag, prt=None)
-            all_go_ids.update(gosubdag_tmp.rcntobj.go2ancestors.get(go_id, set()))
+        stack = list(go_ids)
+        while stack:
+            current = stack.pop()
+            for p in go2parents.get(current, []):
+                if p not in all_go_ids:
+                    all_go_ids.add(p)
+                    stack.append(p)
 
         # Create GOTerm objects for all GO in subgraph
         goterms_sub = {go_id: GOTerm(go_id, "biological_process") for go_id in all_go_ids}
 
         # Link parent/children
-        gosubdag_full = GoSubDag(list(all_go_ids), godag, prt=None) # full subdag
-        for go_id, go_obj in goterms_sub.items():
-            parent_ids = gosubdag_full.rcntobj.go2parents.get(go_id, set()) # get parent IDs from full subdag
-            go_obj.parent = [goterms_sub[p] for p in parent_ids if p in goterms_sub]
+        for go_id, go_obj in goterms_sub.items(): # for each GO term in subgraph
+            parent_ids = go2parents.get(go_id, set())
+            go_obj.parent = [goterms_sub[p] for p in parent_ids if p in goterms_sub] # link to parents in subgraph
             for p_obj in go_obj.parent:
-                p_obj.children.append(go_obj)
+                p_obj.children.append(go_obj) # link child to parent
 
         # Assign only direct GO terms to element
         elem.goterms = [goterms_sub[go_id] for go_id in go_ids]
@@ -136,7 +147,7 @@ def get_overrepresented_terms(elements: list[Element], godag, assoc: dict, pval_
     Args
         A list of Element
         The GO ontology
-        The path to the GAF file
+        A GAF file
         The p-value threshold (default 0.05)
     Returns
         A list of overrepresented GOTerm
@@ -146,8 +157,14 @@ def get_overrepresented_terms(elements: list[Element], godag, assoc: dict, pval_
     background = list(assoc.keys())
     study_set = [elem.name for elem in elements]
 
+    old_stdout = sys.stdout
+    sys.stdout = open(os.devnull, 'w')  # suppress internal prints
+
     goea_obj = GOEnrichmentStudy(background, assoc, godag, methods=["fdr_bh"])
     results = goea_obj.run_study(study_set)
+
+    sys.stdout.close()
+    sys.stdout = old_stdout
 
     # Map GO ID -> existing GOTerm
     go_to_goterm = {go.term: go for elem in elements for go in elem.goterms}
