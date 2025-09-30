@@ -9,21 +9,39 @@ import textwrap
 import annot
 import algo
 import os
+import pickle
+import zipfile
+from pathlib import Path
 
-MATRIX_FILE = 'whole_annotation_genome.dump'
+MATRIX_FILE = 'whole_annotation_genome.zip'
 
 def main(args):
     elements = annot.read_elements(args.elements_file)
     # Check if the whole annotation matrix has already been computed
-    try:
-        with open(MATRIX_FILE, 'r'):
-            # Load in memory
-            pass
-    except:
+    annotMatrix = None
+    if Path.exists(Path(MATRIX_FILE)):
+        if zipfile.is_zipfile(MATRIX_FILE):
+            print("Zip file found")
+            zf = zipfile.ZipFile(MATRIX_FILE, 'r')
+            annotMatrix = pickle.loads(zf.open('wag.matrix').read())
+                #zip.extractall()
+        else:
+            print(MATRIX_FILE+" is not a zip file")
+            with open(MATRIX_FILE, 'rb') as fin:
+                # Load in memory
+                annotMatrix = pickle.load(MATRIX_FILE)
+    else:
         # Calculate the matrix
-        wag = algo.AnnotMatrix(args.gaf_file)
+        print("Calculating the whole genome annotation matrix")
+        annotMatrix = algo.AnnotMatrix(args.gaf_file)
+        algo.AnnotMatrix.dump_to_file(annotMatrix, MATRIX_FILE)
+        
 
-    annot_summary = algo.run_algo(elements, wag)
+    # print("Object loaded, type "+str(type(annotMatrix)))
+    # wag = annotMatrix.matrix
+    # print("Matrix loaded, type "+str(type(wag)))
+    # print("Matrix shape "+str(wag.shape))
+    annot_summary = algo.run_algo(elements, annotMatrix)
     
 
 if __name__ == '__main__':

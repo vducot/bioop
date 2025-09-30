@@ -11,6 +11,10 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 from icecream import ic
+import pickle
+import zipfile
+
+MATRIX_FILE = 'whole_annotation_genome.zip'
 
 def main():
     annotMatrix = AnnotMatrix("files/goa_human.gaf")
@@ -21,9 +25,18 @@ class AnnotMatrix:
     The matrix representing all the annotations for all the given elements
     '''
     def __init__(self, gaf_file):
-        matrix, elements_list, annot_list = self.generate_whole_matrix(gaf_file)
-        elements_number = len(elements_list)
-        annot_number = len(annot_list)
+        self.matrix, self.elements_ids, self.go_ids = self.generate_whole_matrix(gaf_file)
+        self.elements_number = len(self.elements_ids)
+        self.go_number = len(self.go_ids)
+
+    def dump_to_file(annotMatrix, filename):
+        # Save the object to a file
+        print("Dump the object to "+filename)
+        zf = zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED)
+        zf.writestr('wag.matrix', pickle.dumps(annotMatrix))
+        zf.close()
+        # with open(MATRIX_FILE, 'wb') as fout:
+        #     pickle.dump(matrix, fout)
 
     def generate_whole_matrix(self, gaf_file) -> Tuple[np.ndarray, list[annot.Element], list[annot.GOTerm]]:
         '''
@@ -40,7 +53,7 @@ class AnnotMatrix:
             FileNotFoundError or ParserError or Exception
         '''
         # Column 1 is Uniprot ID, 4 is ID GO and 8 the GO Aspect
-        df = pd.read_csv(gaf_file, sep='\t', comment='!', header=None, usecols=[1,4,8], nrows = 5000)
+        df = pd.read_csv(gaf_file, sep='\t', comment='!', header=None, usecols=[1,4,8])
         ic(df.shape)
         # Filter on "Biological Process"
         df = df[df[8] == 'P']
@@ -85,6 +98,7 @@ class AnnotMatrix:
         #np.set_printoptions(threshold=sys.maxsize)
         #print(matrix)
         ic(matrix.shape)
+
         return matrix, go_ids, element_ids
 
 def compute_IC(annot, wag) -> float:
