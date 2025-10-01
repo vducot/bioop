@@ -10,6 +10,7 @@ import pickle
 from goatools.obo_parser import GODag
 from goatools.associations import read_gaf
 from goatools.go_enrichment import GOEnrichmentStudy
+from icecream import ic
 
 class GOTerm:
     '''
@@ -90,7 +91,7 @@ def read_elements(filename: str) -> list[Element]:
     try:
         with open(filename, "r") as f:
             for i, line in enumerate(f, 1):
-                name = line.strip()
+                name = line.split('\t')[0].strip()
                 if name:
                     elements.append(Element(name))
         return elements
@@ -241,5 +242,7 @@ def build_data(go_obo_file, gaf_file, elements_file, assoc_pickle=None, fdr_thre
     fetch_annot_from_goatools(elements, godag, assoc)
     print("Identifying overrepresented GO terms...")
     overrep_terms = get_overrepresented_terms(elements, godag, assoc, pval_threshold=fdr_threshold)
+    ic(len(overrep_terms))
+    ic(len(set(overrep_terms)))
 
     return elements, godag, overrep_terms

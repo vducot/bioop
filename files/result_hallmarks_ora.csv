@@ -1,0 +1,41 @@
+GO:0033554 	cellular response to stress 	1912 	1263.5 	1.2457 	7.1629e-63 	6.4731e-59
+GO:0046907 	intracellular transport 	1334 	881.58 	1.2614 	7.4856e-49 	3.3824e-45
+GO:0045184 	establishment of protein localization 	1666 	1101.0 	1.2189 	6.9825e-43 	2.1034e-39
+GO:0009057 	macromolecule catabolic process 	1338 	884.22 	1.2395 	5.8691e-41 	1.3260e-37
+GO:1903047 	mitotic cell cycle process 	731 	483.08 	1.3186 	2.7753e-40 	5.0161e-37
+GO:0051649 	establishment of localization in cell 	1924 	1271.5 	1.1931 	7.5383e-39 	1.1354e-35
+GO:0033365 	protein localization to organelle 	933 	616.58 	1.2780 	1.4057e-38 	1.8148e-35
+GO:0006396 	RNA processing 	941 	621.86 	1.2752 	4.2749e-38 	4.8290e-35
+GO:0007049 	cell cycle 	1774 	1172.4 	1.1984 	1.2270e-37 	1.2320e-34
+GO:0033043 	regulation of organelle organization 	1182 	781.13 	1.2418 	8.7258e-37 	7.8855e-34
+GO:0000278 	mitotic cell cycle 	881 	582.21 	1.2779 	2.1716e-36 	1.7840e-33
+GO:0006974 	DNA damage response 	872 	576.26 	1.2789 	2.6757e-36 	2.0150e-33
+GO:0015031 	protein transport 	1378 	910.65 	1.2134 	1.8095e-33 	1.2579e-30
+GO:0030163 	protein catabolic process 	973 	643.01 	1.2535 	2.7843e-33 	1.7972e-30
+GO:0051603 	proteolysis involved in protein catabolic process 	739 	488.37 	1.2880 	6.5622e-33 	3.9535e-30
+GO:1901566 	organonitrogen compound biosynthetic process 	1663 	1099.0 	1.1865 	3.9228e-31 	2.2156e-28
+GO:0006259 	DNA metabolic process 	1020 	674.07 	1.2373 	1.5780e-30 	8.3886e-28
+GO:0043687 	post-translational protein modification 	990 	654.24 	1.2396 	3.1897e-30 	1.6014e-27
+GO:0051726 	regulation of cell cycle 	1058 	699.18 	1.2286 	2.1740e-29 	1.0340e-26
+GO:0019941 	modification-dependent protein catabolic process 	636 	420.30 	1.2919 	3.1723e-29 	1.4334e-26
+GO:1901565 	organonitrogen compound catabolic process 	1403 	927.18 	1.1972 	3.7269e-29 	1.6038e-26
+GO:0043632 	modification-dependent macromolecule catabolic process 	647 	427.57 	1.2887 	4.8792e-29 	2.0042e-26
+GO:0009894 	regulation of catabolic process 	1019 	673.41 	1.2311 	6.3454e-29 	2.4932e-26
+GO:0006914 	autophagy 	576 	380.65 	1.3030 	1.1248e-28 	4.0659e-26
+GO:0061919 	process utilizing autophagic mechanism 	576 	380.65 	1.3030 	1.1248e-28 	4.0659e-26
+GO:0006511 	ubiquitin-dependent protein catabolic process 	626 	413.69 	1.2884 	4.5903e-28 	1.5955e-25
+GO:0022402 	cell cycle process 	1262 	834.00 	1.2038 	5.8613e-28 	1.9618e-25
+GO:0044770 	cell cycle phase transition 	521 	344.30 	1.3128 	8.4762e-28 	2.7357e-25
+GO:0006886 	intracellular protein transport 	641 	423.61 	1.2819 	2.1308e-27 	6.6401e-25
+GO:0022613 	ribonucleoprotein complex biogenesis 	450 	297.38 	1.3316 	2.6983e-27 	8.1280e-25
+GO:0016071 	mRNA metabolic process 	725 	479.12 	1.2606 	2.3706e-26 	6.9108e-24
+GO:0016192 	vesicle-mediated transport 	1518 	1003.2 	1.1793 	3.1142e-26 	8.7946e-24
+GO:0006518 	peptide metabolic process 	798 	527.36 	1.2458 	9.9109e-26 	2.7141e-23
+GO:0070647 	protein modification by small protein conjugation or removal 	901 	595.43 	1.2310 	1.2907e-25 	3.4307e-23
+GO:0044087 	regulation of cellular component biogenesis 	986 	651.60 	1.2201 	1.9972e-25 	5.1568e-23
+GO:0044248 	cellular catabolic process 	1584 	1046.8 	1.1722 	2.4444e-25 	6.1362e-23
+GO:0080135 	regulation of cellular response to stress 	645 	426.25 	1.2692 	4.1204e-25 	1.0064e-22
+GO:0006281 	DNA repair 	591 	390.56 	1.2802 	4.9956e-25 	1.1880e-22
+GO:1902531 	regulation of intracellular signal transduction 	1755 	1159.8 	1.1614 	7.2386e-25 	1.6773e-22
+GO:0010498 	proteasomal protein catabolic process 	524 	346.29 	1.2937 	1.5240e-24 	3.4431e-22
+GO:0051254 	positive regulation of RNA metabolic process 	1816 	1200.1 	1.1441 	9.3362e-21 	1.4062e-18 

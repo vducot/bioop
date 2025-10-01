@@ -13,6 +13,7 @@ import os
 import pickle
 import zipfile
 from pathlib import Path
+from icecream import ic
 
 MATRIX_FILE = 'whole_annotation_genome.zip'
 ASSOC_PICKLE = "assoc.pkl"
@@ -63,6 +64,7 @@ def main(args):
     elements, godag, overrep_terms = annot.build_data(
         args.obo_file, args.gaf_file, args.elements_file, ASSOC_PICKLE, fdr_threshold=args.threshold
     )
+    ic(len(overrep_terms))
 
     summarize_per_element(elements, include_ancestors=True)
     summarize_global(elements)
@@ -72,7 +74,7 @@ def main(args):
     annotMatrix = None
     if Path.exists(Path(MATRIX_FILE)):
         if zipfile.is_zipfile(MATRIX_FILE):
-            print("Zip file found")
+            print("Zip file found, loading the matrix")
             zf = zipfile.ZipFile(MATRIX_FILE, 'r')
             annotMatrix = pickle.loads(zf.open('wag.matrix').read())
                 #zip.extractall()
@@ -87,11 +89,6 @@ def main(args):
         annotMatrix = algo.AnnotMatrix(args.gaf_file)
         algo.AnnotMatrix.dump_to_file(annotMatrix, MATRIX_FILE)
         
-
-    # print("Object loaded, type "+str(type(annotMatrix)))
-    # wag = annotMatrix.matrix
-    # print("Matrix loaded, type "+str(type(wag)))
-    # print("Matrix shape "+str(wag.shape))
     # --- Run summarization algorithm ---
     print("Running annotation summarization...")
     annot_summary = algo.run_algo(elements, annotMatrix, overrep_terms)

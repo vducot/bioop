@@ -180,6 +180,9 @@ def run_algo(eoi, wag, candidates) -> set[annot.GOTerm]:
     # Initialization
     summary = set()
     elts_annot_by_cand = set()
+    
+    ic(len(candidates))
+    ic(len(set(candidates)))
 
     for c in candidates:
         elts_annot_by_cand.update(c.cover_elements)
@@ -211,7 +214,7 @@ def run_algo(eoi, wag, candidates) -> set[annot.GOTerm]:
         for a in candidates:
             if any(p in cWNS for p in a.parent) or any(p in candidates_to_remove for p in a.parent):
                 candidates_to_remove.add(a)
-        candidates = candidates - candidates_to_remove
+        candidates = [c for c in candidates if c not in candidates_to_remove]
 
         # Summary = summary U cWNS
         summary.update(cWNS)
@@ -243,6 +246,7 @@ def run_algo(eoi, wag, candidates) -> set[annot.GOTerm]:
     ## Prune redondant annotations from the summary
     # = annot that are covered by > 1 other annot of the summary ??
 
+    ic(len(candidates))
     # Annot from summary that have an ancestor in the summary
     to_remove = set()
     # 1. Remove descendants only if fully covered by multiple ancestors
