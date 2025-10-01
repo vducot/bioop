@@ -33,6 +33,23 @@ class GOTerm:
     def add_child(self, child: Self):
         self.children.append(child)
 
+    def get_all_ancestors(self) -> set:
+        '''
+        Returns all ancestor (is_a) GOTerms (direct and indirect) of the term.
+        Args
+            None
+        Returns
+            A set of GOTerm
+        '''
+        ancestors = set()
+        stack = list(self.parent)
+        while stack:
+            p = stack.pop()
+            if p not in ancestors:
+                ancestors.add(p)
+                stack.extend(p.parent)
+        return ancestors
+
 class Element:
     '''
     Represents an element of interest
@@ -52,11 +69,9 @@ class Element:
         '''
         ancestors_set = set()
         for go in self.goterms:
-            ancestors_set.add(go.term) # include direct term in ancestors?
-            for p in go.parent:
-                ancestors_set.add(p.term)
+            ancestors_set.add(go)
+            ancestors_set.update(go.get_all_ancestors())
         return list(ancestors_set)
-
 
 def read_elements(filename: str) -> list[Element]:
     """
