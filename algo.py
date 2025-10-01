@@ -211,7 +211,7 @@ def run_algo(eoi, wag, candidates) -> set[annot.GOTerm]:
         for a in candidates:
             if any(p in cWNS for p in a.parent) or any(p in candidates_to_remove for p in a.parent):
                 candidates_to_remove.add(a)
-        candidates = [c for c in candidates if c not in candidates_to_remove]
+        candidates = candidates - candidates_to_remove
 
         # Summary = summary U cWNS
         summary.update(cWNS)
@@ -231,16 +231,16 @@ def run_algo(eoi, wag, candidates) -> set[annot.GOTerm]:
                 if a in candidates and e not in elts_annot_by_cand:
                     elts_annot_by_cand.add(e)
 
-        # Remove candidates not associated with any EOI not yet annotated
-        new_elements = {e for e in eoi if e not in elts_annot_by_summary}
-        candidates = [c for c in candidates if any(e.name in c.cover_elements for e in new_elements)]
+        # Remove from candidates the annotations that are not associated with any element
+        # not yet annotated by summary
+        for a in candidates:
+            # If intersection with elts_annot_by_summary and a.cover_elements is empty
+            if len(a.cover_elements & elts_annot_by_summary) == 0:
+                # Remove the annot from candidates
+                candidates.remove(a)
 
-        # Recompute score for each candidate
-        for c in candidates:
-            c.score = compute_score(c, eoi, wag)
 
-
-    # Prune redondant annotations from the summary
+    ## Prune redondant annotations from the summary
     # = annot that are covered by > 1 other annot of the summary ??
 
     # Annot from summary that have an ancestor in the summary
