@@ -16,16 +16,12 @@ import zipfile
 
 MATRIX_FILE = 'whole_annotation_genome.zip'
 
-def main():
-    annotMatrix = AnnotMatrix("files/goa_human.gaf")
-
-
 class AnnotMatrix:
     '''
     The matrix representing all the annotations for all the given elements
     '''
     def __init__(self, gaf_file):
-        self.matrix, self.elements_ids, self.go_ids = self.generate_whole_matrix(gaf_file)
+        self.matrix, self.go_ids, self.elements_ids = self.generate_whole_matrix(gaf_file)
         self.elements_number = len(self.elements_ids)
         self.go_number = len(self.go_ids)
 
@@ -38,7 +34,7 @@ class AnnotMatrix:
         # with open(MATRIX_FILE, 'wb') as fout:
         #     pickle.dump(matrix, fout)
 
-    def generate_whole_matrix(self, gaf_file) -> Tuple[np.ndarray, list[annot.Element], list[annot.GOTerm]]:
+    def generate_whole_matrix(self, gaf_file) -> Tuple[np.ndarray, dict, dict]:
         '''
         Generate the matrix representing all the annotations for all the elements, based on the gaf_file
         Initialize a dict with all elements of the gaf file and another with all annotations
@@ -54,10 +50,10 @@ class AnnotMatrix:
         '''
         # Column 1 is Uniprot ID, 4 is ID GO and 8 the GO Aspect
         df = pd.read_csv(gaf_file, sep='\t', comment='!', header=None, usecols=[1,4,8])
-        ic(df.shape)
+        #ic(df.shape)
         # Filter on "Biological Process"
         df = df[df[8] == 'P']
-        print(df.head)
+        #print(df.head)
         # Get unique IDs and init the matrix with zeros
         # Column 4 is ID GO
         go_unique_number = len(df[4].unique())
@@ -69,7 +65,7 @@ class AnnotMatrix:
         go_ids = dict()
         element_ids = dict()
         # Read all GAF file and set (i,j) to 1 in the matrix if i annotates j
-        ic(df.shape)
+        #ic(df.shape)
         for i, row in df.iterrows():
             e_id = row[1]
             go_id = row[4]
@@ -97,7 +93,7 @@ class AnnotMatrix:
         #ic(element_ids)
         #np.set_printoptions(threshold=sys.maxsize)
         #print(matrix)
-        ic(matrix.shape)
+        #ic(matrix.shape)
 
         return matrix, go_ids, element_ids
 
@@ -115,12 +111,10 @@ def compute_IC(annot, wag) -> float:
         ValueError if the given annotation is not in our database
     '''
     annot_index = 0
-    try:
-        annot_index = wag.annot_list[annot]
-    except ValueError:
-        print(f"Error, the annotation {annot} is not in the pre-calculated data. Exiting.")
-        sys.exit(404)
-
+    if annot.term not in wag.go_ids: # The annotation from obo file that is not in our database
+        return 0.0
+    annot_index = wag.go_ids[annot.term]
+    # Probability of finding this annotation in the whole genome
     p = sum(wag.matrix[annot_index]) / wag.elements_number
     return -math.log(p, 2)
 
@@ -141,7 +135,7 @@ def compute_score(annot, eoi, wag) -> float:
     '''
     annototed_by_a = 0
     for e in eoi:
-        if e.goterm == annot:
+        if e.goterms == annot:
             annototed_by_a +=1
     return compute_IC(annot, wag) * annototed_by_a
 
@@ -172,7 +166,7 @@ def get_max_score_element(annot_list) -> set[annot.GOTerm]:
             annots_with_max_score.add(a)
     return annots_with_max_score
 
-def run_algo(eoi, wag) -> set[annot.GOTerm]:
+def run_algo(eoi, wag, candidates) -> set[annot.GOTerm]:
     '''
     Run the algorithm to summarize annotations of a set of elements
     Args
@@ -185,18 +179,22 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
     '''
     # Initialization
     summary = set()
-    candidates = annot.get_overrepresented_terms(eoi, wag.godag, wag.gaf_file) # List
     elts_annot_by_cand = set()
+
     for c in candidates:
         elts_annot_by_cand.update(c.cover_elements)
     
     elts_annot_by_summary = set()
 
+    # Initial score computation
+    for c in candidates:
+        c.score = compute_score(c, eoi, wag)
+
     # Main loop
     # While there is still
     # - candidates and
     # - elements annotated by candidates but not annotated by summary annotations
-    while (len(candidates) != 0 and len(elts_annot_by_cand) - len(elts_annot_by_cand - elts_annot_by_summary)):
+    while len(candidates) > 0 and len(elts_annot_by_cand - elts_annot_by_summary) > 0:
         # Compute candidates with max score
         cWNS = get_max_score_element(candidates)
 
@@ -211,15 +209,18 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
         # Remove the descendants of cWNS from candidates
         candidates_to_remove = set()
         for a in candidates:
-            if a.parent in cWNS or a.parent in candidates_to_remove:
+            if any(p in cWNS for p in a.parent) or any(p in candidates_to_remove for p in a.parent):
                 candidates_to_remove.add(a)
+        candidates = [c for c in candidates if c not in candidates_to_remove]
 
         # Summary = summary U cWNS
         summary.update(cWNS)
 
         # Remove cWNS annotations from candidates, as we add them to summary
+        # candidates = [c for c in candidates if c not in cWNS]
         for a in cWNS:
-            candidates.remove(a)
+            if a in candidates:
+                candidates.remove(a)
 
         # Update elements annotated by candidates and elements annotated by summary
         for e in eoi:
@@ -230,13 +231,13 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
                 if a in candidates and e not in elts_annot_by_cand:
                     elts_annot_by_cand.add(e)
 
-        # Remove from candidates the annotations that are not associated with any element
-        # not yet annotated by summary
-        for a in candidates:
-            # If intersection with elts_annot_by_summary and a.cover_elements is empty
-            if len(a.cover_elements & elts_annot_by_summary) == 0:
-                # Remove the annot from candidates
-                candidates.remove(a)
+        # Remove candidates not associated with any EOI not yet annotated
+        new_elements = {e for e in eoi if e not in elts_annot_by_summary}
+        candidates = [c for c in candidates if any(e.name in c.cover_elements for e in new_elements)]
+
+        # Recompute score for each candidate
+        for c in candidates:
+            c.score = compute_score(c, eoi, wag)
 
 
     # Prune redondant annotations from the summary
@@ -244,35 +245,25 @@ def run_algo(eoi, wag) -> set[annot.GOTerm]:
 
     # Annot from summary that have an ancestor in the summary
     to_remove = set()
+    # 1. Remove descendants only if fully covered by multiple ancestors
     for annot in summary:
         ancestors = annot.get_all_ancestors()
-        # That have an ancestor in the summary
-        for ancestor in ancestors:
-            if ancestor in summary:
-                #1 The ancestor annotates >= 1 EOI that is not annotated by any other annot from the summary
-                for elt in ancestor.cover_elements():
-                    elt_anc = elt.get_all_ancestors()
-                    if elt_anc == set(ancestor):
-                        print(f"Annotation {annot.term} marked to prune")
-                        # Discard the descendant
+        for anc in ancestors:
+            if anc in summary:
+                # a) remove descendant if ancestor annotates at least one element not covered by other summary GO
+                for elt_name in anc.cover_elements:
+                    e = next((el for el in eoi if el.name == elt_name), None)
+                    if e and all(a not in summary or a == anc for a in e.get_all_ancestors()):
                         to_remove.add(annot)
-                #2 All the EOI are annotated by >=1 annot from the summary that is different from the ancestor
+                # b) remove ancestor if all elements annotated by at least one other summary GO
                 counter = 0
                 for e in eoi:
-                    elt_annots = e.get_all_ancestors()
-                    # Annotations different from the ancestor
-                    annot_diff_from_anc = set(elt_annots) - set(ancestor)
-                    # that are from the summary
-                    annot_is_in_summary = [a for annot in annot_diff_from_anc if a in summary ]
-                    if len(annot_is_in_summary) >= 1:
+                    e_ancestors = e.get_all_ancestors()
+                    other_summary_anc = [a for a in e_ancestors if a in summary and a != anc]
+                    if other_summary_anc:
                         counter += 1
-                # All the EOI
                 if counter == len(eoi):
-                    # Discard the ancestor
-                    to_remove.add(ancestor)
-    summary = summary - to_remove
+                    to_remove.add(anc)
+    summary -= to_remove
 
     return summary
-
-if __name__ == '__main__':
-    main()
