@@ -91,7 +91,7 @@ def main(args):
         
     # --- Run summarization algorithm ---
     print("Running annotation summarization...")
-    annot_summary = algo.run_algo(elements, annotMatrix, overrep_terms)
+    annot_summary = algo.run_algo(elements, annotMatrix)
     summarize_annotations(annot_summary)
 
     # --- Optional: show top GO terms by coverage ---

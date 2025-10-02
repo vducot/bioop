@@ -178,6 +178,13 @@ def run_algo(eoi, wag, candidates) -> set[annot.GOTerm]:
         ???
     '''
     # Initialization
+    candidates = []
+    # get all Go that have overrepresented = True as a List
+    for e in eoi:
+        for go in e.goterms:
+            if go.overrepresented:
+                candidates.append(go)
+
     summary = set()
     elts_annot_by_cand = set()
     
