@@ -1,107 +1,110 @@
-###
-# Main file
-# M2 Bio-info 2025 - OOP - Project 1
-# Gwendoline & Vincent
-###
-
+# bissap.py
 import argparse
 import textwrap
-import annot
+import zipfile
+import pickle
+from annot import Element, GOTerm, fetch_BP_annotations
+from pathlib import Path
 from algo import AnnotMatrix, run_algo
 import algo
 import os
-import pickle
-import zipfile
-from pathlib import Path
-from icecream import ic
+import re
+from goatools.obo_parser import GODag
 
 MATRIX_FILE = 'whole_annotation_genome.zip'
-ASSOC_PICKLE = "assoc.pkl"
+GAF_PICKLE = "gaf.pkl"
 
-def summarize_per_element(elements, include_ancestors=False):
-    print("\n=== Per-element GO summary ===\n")
-
-    for elem in elements:
-        direct_go = elem.goterms
-        if include_ancestors:
-            total_go = set(direct_go)
-            for go in direct_go:
-                total_go.update(go.parent)
-        else:
-            total_go = set(direct_go)
-
-        overrep_go = [go for go in total_go if go.overrepresented]
-
-        print(f"Element: {elem.name}")
-        print(f"  # Direct GO: {len(direct_go)}")
-        print(f"  # Total GO: {len(total_go)}")
-        print(f"  Direct GO terms: {', '.join(go.term for go in direct_go)}")
-        print(f"  Overrepresented GO terms ({len(overrep_go)}): {', '.join(go.term for go in overrep_go)}\n")
-
-def summarize_global(elements):
-    print("\n=== Global GO summary ===\n")
-    all_go = {go for elem in elements for go in elem.goterms}
-    overrep_go = [go for go in all_go if go.overrepresented]
-
-    print(f"Total GO terms found: {len(all_go)}")
-    print(f"Total overrepresented GO terms: {len(overrep_go)}\n")
-
-    if overrep_go:
-        print("Top overrepresented GO terms (sorted by FDR, up to 10):")
-        for go in sorted(overrep_go, key=lambda g: g.fdr)[:10]:
-            print(f"- {go.term} | NS: {go.namespace} | FDR: {go.fdr:.3e} | Covered elements: {len(go.cover_elements)}")
-    print("\n")
-
-def summarize_annotations(summary_terms):
-    print("\n=== Summary Annotations ===\n")
-    for term in summary_terms:
-        print(f"{term.term} | Coverage: {len(term.cover_elements)} elements")
-    print(f"\nTotal summary GO terms: {len(summary_terms)}\n")
+def read_elements(filename: str) -> set[Element]:
+    """
+    Read a file with one element per line
+    Args
+        filename: path to the file
+    Returns
+        A list of Element
+    Exceptions
+        Raises an exception if the file cannot be read
+    """
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"Elements file not found: {filename}")
+    
+    elements = set()
+    try:
+        with open(filename, "r") as f:
+            for i, line in enumerate(f, 1):
+                name = re.split('\t', line)[0].strip()
+                if name:
+                    elements.add(Element(name))
+        return elements
+    except Exception as e:
+        raise IOError(f"Error reading elements file {filename}: {e}")
 
 def main(args):
+    eoi_set = read_elements(args.dataset)
+    print(f"Loaded {len(eoi_set)} elements of interest")
     # --- Load GO data ---
-    print(f"Building GO annotations using OBO file {args.obo_file} and GAF file {args.gaf_file}...")
-    elements, godag, overrep_terms = annot.build_data(
-        args.obo_file, args.gaf_file, args.elements_file, ASSOC_PICKLE, fdr_threshold=args.threshold
-    )
-    ic(len(overrep_terms))
+    godag = GODag(args.obo_file)
 
-    summarize_per_element(elements, include_ancestors=True)
-    summarize_global(elements)
-
-    # --- Load or compute the whole annotation matrix ---
-    # Check if the whole annotation matrix has already been computed
-    annotMatrix = None
-    if Path.exists(Path(MATRIX_FILE)):
-        if zipfile.is_zipfile(MATRIX_FILE):
-            print("Zip file found, loading the matrix")
-            zf = zipfile.ZipFile(MATRIX_FILE, 'r')
-            annotMatrix = pickle.loads(zf.open('wag.matrix').read())
-                #zip.extractall()
-        else:
-            print(MATRIX_FILE+" is not a zip file")
-            with open(MATRIX_FILE, 'rb') as fin:
-                # Load in memory
-                annotMatrix = pickle.load(MATRIX_FILE)
-    else:
-        # Calculate the matrix
-        print("Calculating the whole genome annotation matrix")
-        annotMatrix = algo.AnnotMatrix(args.gaf_file)
-        algo.AnnotMatrix.dump_to_file(annotMatrix, MATRIX_FILE)
-        
-    # --- Run summarization algorithm ---
-    print("Running annotation summarization...")
-    annot_summary = algo.run_algo(elements, annotMatrix)
-    summarize_annotations(annot_summary)
-
-    # --- Optional: show top GO terms by coverage ---
-    top_by_coverage = sorted(annot_summary, key=lambda g: len(g.cover_elements), reverse=True)[:10]
-    print("Top GO terms by coverage (up to 10):")
-    for go in top_by_coverage:
-        print(f"- {go.term} | Coverage: {len(go.cover_elements)} elements")
+    fetch_BP_annotations(eoi_set, args.gaf_file, godag, GAF_PICKLE)
+    if args.verbose:
+        for e in eoi_set:
+            print(f"{e.name}: {len(e.go_terms)} BP GO terms")
     
+    if args.just_scores:
+        # We only want scores from external annotations (ie ORA, GSEA)
+        print("scores")
+        # Filter 
+        pass
+    else:
+        # --- Load or compute the whole annotation matrix ---
+        # Check if the whole annotation matrix has already been computed
+        annot_matrix = None
+        if Path.exists(Path(MATRIX_FILE)):
+            if zipfile.is_zipfile(MATRIX_FILE):
+                print("Zip file found, loading the matrix")
+                zf = zipfile.ZipFile(MATRIX_FILE, 'r')
+                annot_matrix = pickle.loads(zf.open('wag.matrix').read())
+                    #zip.extractall()
+            else:
+                print(MATRIX_FILE+" is not a zip file")
+                with open(MATRIX_FILE, 'rb') as fin:
+                    # Load in memory
+                    annot_matrix = pickle.load(MATRIX_FILE)
+        else:
+            # Calculate the matrix
+            print("Calculating the whole genome annotation matrix")
+            annot_matrix = algo.AnnotMatrix(args.gaf_file)
+            algo.AnnotMatrix.dump_to_file(annot_matrix, MATRIX_FILE)
+        print(f"Annotation matrix: {annot_matrix.elements_number} elements x {annot_matrix.go_number} GO terms")
 
-if __name__ == '__main__':
+        # --- Build GOTerm candidates ---
+        candidates_dict = {}
+        for e in eoi_set:
+            for go_id in e.go_terms:
+                if go_id not in candidates_dict:
+                    term = GOTerm(go_id, godag)
+                    candidates_dict[go_id] = term
+                candidates_dict[go_id].elements.add(e)
+        # Filter by coverage threshold
+        candidates = set()
+        for term in candidates_dict.values():
+            term.update_coverage(eoi_set)
+            if term.coverage >= args.threshold:
+                candidates.add(term)
+                #if args.verbose:
+                    #print(f"[CANDIDATE] {term.term} | coverage={term.coverage:.2f} | elements={[e.name for e in term.elements]}")
+
+        # --- Run algorithm ---
+        summary = run_algo(candidates, eoi_set, annot_matrix, verbose=args.verbose)
+
+    print(f"\nSummary produced with {len(summary)} GO terms\n")
+    total_score = 0
+    for idx, term in enumerate(summary, 1):
+        score = term.IC * term.coverage
+        total_score += score
+        print(f"{idx}. {term.term} | {term.longname} | IC={term.IC:.2f} | coverage={term.coverage:.2f} | score={score:.2f} | elements={[e.name for e in term.elements]}")
+    print(f"Score mean : {total_score/len(summary):.2f}")
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog='python bissap.py',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -113,10 +116,12 @@ if __name__ == '__main__':
             ##########################################''')
     )
 
-    parser.add_argument('elements_file', help='Filename of elements (genes or proteins) list')
-    parser.add_argument('--gaf_file', default="files/goa_human.gaf", help='GAF file path')
-    parser.add_argument('--obo_file', default="files/go-basic.obo", help='GO OBO file path')
-    parser.add_argument('--threshold', type=float, default=0.05, help='FDR threshold for overrepresented GO terms')
+    parser.add_argument("dataset", help="Filename of elements (genes or proteins) list")
+    parser.add_argument("--obo_file", required=True, help='GO OBO file path')
+    parser.add_argument("--gaf_file", required=True, help='GAF file path')
+    parser.add_argument("--threshold", type=float, default=0.05, help="FDR threshold for overrepresented GO terms")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument("--just_scores", action="store_true", help="Only compute stores from external annotations list")
 
     args = parser.parse_args()
     main(args)
