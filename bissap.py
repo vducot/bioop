@@ -108,10 +108,15 @@ def main(args):
 
     # Compact final report
     print("\nFinal Summary:")
+    total_score = 0
     for idx, term in enumerate(sorted(summary, key=lambda x: x.score, reverse=True), 1):
+        total_score += term.score * term.coverage
         elements_list = ", ".join(e.name for e in term.elements)
-        print(f"{term.term} | {args.score_type}={term.score:.2f} | cov={term.coverage:.2f} | elements: [{elements_list}]")
+        print(f"{term.term} | {term.longname} | {args.score_type}={term.score:.2f} | cov={term.coverage:.2f} | elements: [{elements_list}]")
 
+        #print(f"{idx}. {term.term} | {term.longname} | IC={term.IC:.2f} | coverage={term.coverage:.2f} | score={score:.2f} | elements={[e.name for e in term.elements]}")
+    print(f"Score mean : {total_score/len(summary):.2f}")
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="python bissap.py",

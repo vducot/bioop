@@ -9,6 +9,7 @@ from goatools.obo_parser import GODag
 from goatools.associations import read_gaf
 from goatools.go_enrichment import GOEnrichmentStudy
 import sys
+import pandas as pd
 
 class Element:
     """
