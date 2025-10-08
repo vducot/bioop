@@ -1,0 +1,3 @@
+numpy==1.24.4
+pandas==2.0.2
+goatools==1.5.2
