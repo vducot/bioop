@@ -105,6 +105,17 @@ def compute_IC(annot, wag):
     return -math.log2(p) if p>0 else 0.0
 
 def run_algo(candidates, eoi_set, wag, verbose=True):
+    '''
+    Execute the main algorithm to select the best annotations
+    Args
+        A list of GOTerm candidates
+        The elements of interest, as a set
+        The whole annotation x gene matrix, as a AnnotMatrix object
+    Returns
+        A set of annotations that summarize the elements of interest
+    Exception
+        No exception
+    '''
     summary = set()
     ElmtsAnnotatedBySummary = set()
     iteration = 1
@@ -125,8 +136,8 @@ def run_algo(candidates, eoi_set, wag, verbose=True):
             effective_cov = len(new_elements) / len(eoi_set)
             score = effective_cov * c.IC
             scores[c] = score
-            if verbose:
-                print(f"Candidate: {c.term} | IC={c.IC:.2f} | new_cov={effective_cov:.2f} | score={score:.4f}")
+            # if verbose:
+            #     print(f"Candidate: {c.term} | IC={c.IC:.2f} | new_cov={effective_cov:.2f} | score={score:.4f}")
 
         max_score = max(scores.values())
         cWMS = {c for c, s in scores.items() if s==max_score}
@@ -152,5 +163,5 @@ def run_algo(candidates, eoi_set, wag, verbose=True):
 
     if verbose:
         print("\n--- Algorithm finished ---")
-        print(f"Final summary ({len(summary)} GO terms): {[c.term for c in summary]}")
+       # print(f"Final summary ({len(summary)} GO terms): {[c.term for c in summary]}")
     return summary

@@ -1,6 +1,7 @@
 # annot.py
 import os
 import pickle
+import pandas as pd
 from goatools.obo_parser import GODag
 from goatools.associations import read_gaf
 
@@ -58,8 +59,26 @@ class GOTerm:
         self.elements = set()
         self.IC = None
         self.coverage = 0.0
+        self.longname = self.get_annot_long_name(term)
         self._populate_ancestors_descendants()
 
+    def get_annot_long_name(self, term: str):
+        '''
+        Fetch complete and human readable name of an GO term
+        Args
+            The GO term as string
+        Returns
+            The complete name (if found), else None
+        Exception
+            No exception
+        '''
+        match_file = "geneOntology-BP-label.tsv"
+        match_df = pd.read_csv(match_file, sep="\t")
+        term_series = match_df.loc[match_df.idAnnotation==term,'annotationLabel']
+        if len(term_series) == 0:
+            return None
+        return term_series.values[0]
+        
     def _populate_ancestors_descendants(self):
         """Use GODag from goatools to get ancestors/descendants"""
         if self.term in self.godag:
