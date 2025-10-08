@@ -24,19 +24,19 @@ class Element:
 
 def fetch_BP_annotations(eoi_set, gaf_file: str, godag: GODag, gaf_pickle=None):
     """
-    Annotate each element with biological process GO terms. 
-    Loads GO associations from a GAF file (or from a cached pickle),
-    and adds 'biological_process' GO terms to each element.
+    Annotate each element with biological process GO terms
+    Loads GO associations from a GAF file (or from a cached pickle)
+    and adds 'biological_process' GO terms to each element
     Args:
-        As et of elements of interest.
-        A path to the GAF annotation file.
-        GO ontology DAG object.
-        Optional path to a pickle cache.
+        As et of elements of interest
+        A path to the GAF annotation file
+        GO ontology DAG object
+        Optional path to a pickle cache
     Returns:
         None (updates elements)
     Exceptions:
-        FileNotFoundError: If the GAF file does not exist.
-        IOError: If reading or writing the pickle fails.
+        FileNotFoundError: If the GAF file does not exist
+        IOError: If reading or writing the pickle fails
     """
     # Load or build GAF associations
     if gaf_pickle and os.path.exists(gaf_pickle):
@@ -67,7 +67,7 @@ def fetch_BP_annotations(eoi_set, gaf_file: str, godag: GODag, gaf_pickle=None):
 
 class GOTerm:
     """
-    Represents a Gene Ontology (GO) term.
+    Represents a Gene Ontology (GO) term
     """
     def __init__(self, term, godag: GODag):
         self.term = term
@@ -75,7 +75,7 @@ class GOTerm:
         self.ancestors = set()
         self.descendants = set()
         self.elements = set()
-        self.IC = None
+        self.score = None
         self.coverage = 0.0
         self.overrepresented = False
         self.pvalue = 0.0
@@ -83,7 +83,7 @@ class GOTerm:
 
     def _populate_ancestors_descendants(self):
         """
-        Populate ancestor and descendant GO terms using GODag.
+        Populate ancestor and descendant GO terms using GODag
         """
         if self.term in self.godag:
             goobj = self.godag[self.term]
@@ -95,29 +95,29 @@ class GOTerm:
 
     def update_coverage(self, eoi_set):
         """
-        Compute and update the coverage for this GO term.
+        Compute and update the coverage for this GO term
         Args:
-            Aet of elements of interest.
+            Aet of elements of interest
         Returns:
-            A fraction of EOI annotated with this term.
+            A fraction of EOI annotated with this term
         """
         self.coverage = len(self.elements & eoi_set) / len(eoi_set) if eoi_set else 0.0
         return self.coverage
     
 def get_overrepresented_terms(eoi_set, godag: GODag, gaf_file, gaf_pickle=None, pval_threshold: float = 0.05) -> set:
     """
-    Perform GO enrichment analysis to find overrepresented terms.
+    Perform GO enrichment analysis to find overrepresented terms
     Args:
         Aset or list of Element objects
         godag: GODag instance
-        Path to the GAF annotation file.
-        Optional path to a pickle cache.
+        Path to the GAF annotation file
+        Optional path to a pickle cache
         Significance threshold (default: 0.05)
     Returns:
         A set of GOTerm objects marked as overrepresented
     Exceptions:
-        FileNotFoundError: If the GAF file does not exist.
-        IOError: If reading or writing the pickle fails.
+        FileNotFoundError: If the GAF file does not exist
+        IOError: If reading or writing the pickle fails
     """
     # Load or build associations
     if gaf_pickle and os.path.exists(gaf_pickle):
@@ -143,15 +143,8 @@ def get_overrepresented_terms(eoi_set, godag: GODag, gaf_file, gaf_pickle=None, 
 
     old_stdout = sys.stdout
     sys.stdout = open(os.devnull, 'w') # suppress internal prints
-    # Build GOEA object
-    goeaobj = GOEnrichmentStudy(
-        background,           # Population totale
-        gaf,                      # Associations gène -> GO terms
-        godag,                    # Ontologie GO
-        propagate_counts=True,    # Propage les annotations aux ancêtres
-        alpha=pval_threshold,     # Seuil de significativité
-        methods=['fdr_bh']        # Méthodes de correction multiple
-    )
+    # Build GOEA object using goatools
+    goeaobj = GOEnrichmentStudy(background, gaf, godag, propagate_counts=True, alpha=pval_threshold, methods=['fdr_bh'])
     results = goeaobj.run_study(study_set)
     sys.stdout.close()
     sys.stdout = old_stdout

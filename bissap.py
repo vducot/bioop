@@ -102,15 +102,15 @@ def main(args):
 
     # --- Run algorithm ---
     print("\nRunning summarization algorithm...")
-    summary = run_algo(candidates_objects, eoi_set, annot_matrix)
+    summary = run_algo(candidates_objects, eoi_set, annot_matrix, score_type=args.score_type)
     print("\nSummary completed.")
     print(f"{len(summary)} representative GO terms selected.\n")
 
     # Compact final report
     print("\nFinal Summary:")
-    for idx, term in enumerate(sorted(summary, key=lambda x: x.IC, reverse=True), 1):
+    for idx, term in enumerate(sorted(summary, key=lambda x: x.score, reverse=True), 1):
         elements_list = ", ".join(e.name for e in term.elements)
-        print(f"{term.term} | IC={term.IC:.2f} | cov={term.coverage:.2f} | elements: [{elements_list}]")
+        print(f"{term.term} | {args.score_type}={term.score:.2f} | cov={term.coverage:.2f} | elements: [{elements_list}]")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -128,10 +128,12 @@ if __name__ == "__main__":
     parser.add_argument("dataset", help="Filename of elements (genes or proteins) list")
     parser.add_argument("--obo_file", required=True, help="Path to GO OBO file")
     parser.add_argument("--gaf_file", required=True, help="Path to GAF file")
-    parser.add_argument("--threshold", type=float, default=0.05, help="FDR threshold for overrepresented GO terms (default: 0.05)",)
+    parser.add_argument("--threshold", type=float, default=0.05, help="FDR threshold for overrepresented GO terms (default: 0.05)")
     parser.add_argument("--verbose", action="store_true", help="Enable detailed logging")
+    parser.add_argument("--score_type", choices=["IC", "H"], default="IC", help="Scoring method for GO terms: IC (Information Content) or H (Hentropy). Default is IC")
 
     args = parser.parse_args()
     main(args)
     #run example:
-    #python bissap.py datasets/dataset03.csv --obo_file go-basic.obo --gaf_file goa_human.gaf --threshold 0.05 --verbose
+    #python bissap.py datasets/dataset03.csv --obo_file go-basic.obo --gaf_file goa_human.gaf
+    #python bissap.py datasets/dataset03.csv --obo_file go-basic.obo --gaf_file goa_human.gaf --threshold 0.05 --verbose --score_type "IC"

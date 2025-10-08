@@ -79,28 +79,14 @@ class AnnotMatrix:
 
         return matrix, go_ids, element_ids
 
-def score(annot: GOTerm):
-    """
-    Compute the score of a GO term: IC * coverage
-    Args:
-        GO term object
-    Returns:
-        Score value
-    Exceptions:
-        ValueError: If IC or coverage is not computed
-    """
-    if annot.IC is None or annot.coverage is None:
-        raise ValueError(f"IC or coverage not computed for {annot.term}")
-    return annot.IC * annot.coverage
-
 def compute_IC(annot, wag):
     """
     Compute Information Content (IC) using the annotation matrix
     Args:
         GO term
-        Global annotation matrix.
+        Global annotation matrix
     Returns:
-        IC value (0 if term not in matrix).
+        IC value (0 if term not in matrix)
     """
     if annot.term not in wag.go_ids:
         return 0.0
@@ -109,37 +95,50 @@ def compute_IC(annot, wag):
     return -math.log2(p) if p>0 else 0.0
 
 def compute_H(annot, wag):
-    """Compute Information Content using global AnnotMatrix."""
+    """
+    Compute hentropy using global AnnotMatrix
+    H(annot)= -p(annot)*log2(p(annot))
+    Args:
+        GO term
+        Global annotation matrix
+    Returns:
+        H value (0 if term not in matrix)
+    """
     if annot.term not in wag.go_ids:
         return 0.0
     idx = wag.go_ids[annot.term]
     p = sum(wag.matrix[idx]) / wag.elements_number
-    return -math.log2(p) if p>0 else 0.0
+    return -p * math.log2(p) if p>0 else 0.0
 
-def run_algo(candidates, eoi_set, wag):
+def run_algo(candidates, eoi_set, wag, score_type: str = "IC"):
     """
-    Run the greedy summarization algorithm for GO terms.
+    Run the greedy summarization algorithm for GO terms
     Args:
-        Candidate GO terms.
-        Elements of interest.
-        Annotation matrix.
-        Whether to print summary info.
+        Candidate GO terms
+        Elements of interest
+        Annotation matrix
+        Whether to print summary info
     Returns:
-        Selected summary GO terms.
-    """   
+        Selected summary GO terms
+    """
+    if score_type not in {"IC", "H"}:
+        raise ValueError(f"Invalid score_type '{score_type}'. Must be 'IC' or 'H'.")
     summary = set()
     ElmtsAnnotatedBySummary = set()
 
     # Compute IC for all candidates
     for c in candidates:
-        c.IC = compute_IC(c, wag)
+        if score_type == "IC":
+            c.score = compute_IC(c, wag)
+        else:
+            c.score = compute_H(c, wag)
 
     while candidates and (eoi_set - ElmtsAnnotatedBySummary):
         scores = {}
         for c in candidates:
             new_elements = c.elements - ElmtsAnnotatedBySummary
             effective_cov = len(new_elements) / len(eoi_set)
-            score = effective_cov * c.IC
+            score = effective_cov * c.score
             scores[c] = score
             
         max_score = max(scores.values())
