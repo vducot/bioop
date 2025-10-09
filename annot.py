@@ -11,18 +11,6 @@ from goatools.go_enrichment import GOEnrichmentStudy
 import sys
 import pandas as pd
 
-class Element:
-    """
-    Represents an element of interest (gene/protein/etc.)
-    """
-    def __init__(self, name):
-        self.name = name
-        self.go_terms = set()  # Set of GOTerm objects annotated to this element
-
-    def add_go_term(self, go_term):
-        self.go_terms.add(go_term)
-        go_term.add_element(self)
-
 def fetch_BP_annotations(eoi_set, gaf_file: str, godag: GODag, gaf_pickle=None):
     """
     Annotate each element with biological process GO terms
@@ -179,3 +167,29 @@ def get_overrepresented_terms(eoi_set, godag: GODag, gaf_file, gaf_pickle=None, 
             overrepresented_terms.add(go_term)
 
     return overrepresented_terms
+
+class Element:
+    """
+    Represents an element of interest (gene/protein/etc.)
+    """
+    def __init__(self, name):
+        self.name = name
+        self.go_terms = set()  # Set of GOTerm objects annotated to this element
+
+    def add_go_term(self, go_term):
+        self.go_terms.add(go_term)
+        go_term.add_element(self)
+
+    def get_all_ancestors(self) -> list[GOTerm]:
+        '''
+        Returns all ancestor (is_a) GOTerms (direct and indirect) of the element's annotations.
+        Args
+            None
+        Returns
+            A list of GOTerm
+        '''
+        ancestors_set = set()
+        for go in self.goterms:
+            ancestors_set.add(go)
+            ancestors_set.update(go.ancestors)
+        return list(ancestors_set)

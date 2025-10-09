@@ -88,11 +88,12 @@ def compute_IC(annot, wag):
     Returns:
         IC value (0 if term not in matrix)
     """
-    if annot.term not in wag.go_ids:
+    if annot.term not in wag.go_ids.keys():
+        print(f"{annot.term} not found in the matrix")
         return 0.0
     idx = wag.go_ids[annot.term]
     p = sum(wag.matrix[idx]) / wag.elements_number
-    return -math.log2(p) if p>0 else 0.0
+    return -math.log2(p)
 
 def compute_H(annot, wag):
     """
@@ -104,11 +105,12 @@ def compute_H(annot, wag):
     Returns:
         H value (0 if term not in matrix)
     """
-    if annot.term not in wag.go_ids:
+    if annot.term not in wag.go_ids.keys():
+        print(f"{annot.term} not found in the matrix")
         return 0.0
     idx = wag.go_ids[annot.term]
     p = sum(wag.matrix[idx]) / wag.elements_number
-    return -p * math.log2(p) if p>0 else 0.0
+    return -p * math.log2(p)
 
 def run_algo(candidates, eoi_set, wag, score_type: str = "IC"):
     """
@@ -154,5 +156,28 @@ def run_algo(candidates, eoi_set, wag, score_type: str = "IC"):
         summary |= cWMS
         candidates -= cWMS
         ElmtsAnnotatedBySummary |= {e for c in summary for e in c.elements}
+
+    # Pruning
+    to_remove = set()
+    # 1. Remove descendants only if fully covered by multiple ancestors
+    for annot in summary:
+        ancestors = annot.ancestors
+        for anc in ancestors:
+            if anc in summary:
+                # a) remove descendant if ancestor annotates at least one element not covered by other summary GO
+                for elt_name in anc.cover_elements:
+                    e = next((el for el in eoi_set if el.name == elt_name), None)
+                    if e and all(a not in summary or a == anc for a in e.get_all_ancestors()):
+                        to_remove.add(annot)
+                # b) remove ancestor if all elements annotated by at least one other summary GO
+                counter = 0
+                for e in eoi_set:
+                    e_ancestors = e.get_all_ancestors()
+                    other_summary_anc = [a for a in e_ancestors if a in summary and a != anc]
+                    if other_summary_anc:
+                        counter += 1
+                if counter == len(eoi_set):
+                    to_remove.add(anc)
+    summary -= to_remove
 
     return summary

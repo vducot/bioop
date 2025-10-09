@@ -12,10 +12,12 @@ from pathlib import Path
 from algo import AnnotMatrix, run_algo
 import algo
 import os
+import csv
 from goatools.obo_parser import GODag
 
 MATRIX_FILE = 'whole_annotation_genome.zip'
 GAF_PICKLE = "gaf.pkl"
+OUTPUT_CSV = "_summary.csv"
 
 def read_elements(filename: str) -> set[Element]:
     """
@@ -74,6 +76,17 @@ def main(args):
         algo.AnnotMatrix.dump_to_file(annot_matrix, MATRIX_FILE)
         print(f"Annotation matrix: {annot_matrix.elements_number} elements x {annot_matrix.go_number} GO terms")
 
+    # Remove proteins of the EOI that are not in the matrix
+    to_remove = set()
+    for e in eoi_set:
+        if not e.name in annot_matrix.elements_ids.keys():
+            to_remove.add(e)
+            print("Skipping element "+str(e.name))
+    eoi_set -= to_remove
+    if len(eoi_set) == 0:
+        print("Problem, all elements have been skipped")
+        exit(1)
+
     # --- Build GOTerm candidates ---
     # Get overrepresented terms
     print("\nIdentifying overrepresented GO terms...")
@@ -84,6 +97,9 @@ def main(args):
     # Get the corresponding GOTerm objects
     candidates_objects = {go for go in overrepresented_terms if go.term in candidates}
     print(f"Found {len(candidates)} overrepresented GO terms with threshold {args.threshold}")
+    if len(candidates) == 0:
+        print("Problem, maybe adjust the threshold")
+        exit(1)
 
     # --- Update GOTerm coverage and linked elements ---
     for go in candidates_objects:
@@ -109,13 +125,29 @@ def main(args):
     # Compact final report
     print("\nFinal Summary:")
     total_score = 0
-    for idx, term in enumerate(sorted(summary, key=lambda x: x.score, reverse=True), 1):
-        total_score += term.score * term.coverage
-        elements_list = ", ".join(e.name for e in term.elements)
-        print(f"{term.term} | {term.longname} | {args.score_type}={term.score:.2f} | cov={term.coverage:.2f} | elements: [{elements_list}]")
+    total_IC = 0
+    csv_filename = os.path.splitext(args.dataset)[0] + OUTPUT_CSV
+    with open(csv_filename, mode='w', newline='') as f_csv:
+        fieldnames = ["GO_ID", "Long Name", "Score Type", "Score", "Coverage", "Elements"]
+        writer = csv.DictWriter(f_csv, fieldnames=fieldnames)
+        writer.writeheader()
 
-        #print(f"{idx}. {term.term} | {term.longname} | IC={term.IC:.2f} | coverage={term.coverage:.2f} | score={score:.2f} | elements={[e.name for e in term.elements]}")
-    print(f"Score mean : {total_score/len(summary):.2f}")
+        for idx, term in enumerate(sorted(summary, key=lambda x: x.score, reverse=True), 1):
+            total_score += term.score * term.coverage
+            total_IC += term.score
+            elements_list = ", ".join(e.name for e in term.elements)
+            print(f"{term.term} | {term.longname} | {args.score_type}={term.score:.2f} | cov={term.coverage:.2f} | elements: [{elements_list}]")
+            writer.writerow({
+                "GO_ID": term.term,
+                "Long Name": term.longname,
+                "Score Type": args.score_type,
+                "Score": f"{term.score:.2f}",
+                "Coverage": f"{term.coverage:.2f}",
+                "Elements": f"[{elements_list}]"
+            })
+
+    print(f"Score mean : {total_score/len(summary):.2f}, IC mean : {total_IC/len(summary):.2f}")
+    print(f"Info written to {csv_filename}")
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
