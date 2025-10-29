@@ -3,12 +3,13 @@ package bzh.bioop.polio;
 public class Person {
 
     public enum State {
-        EMPTY, HEALTHY, SICK, CURED, DEAD
+        HEALTHY, SICK, CURED, DEAD
     }
 
     private int pos_i;
     private int pos_j;
     private boolean vax;
+    private boolean carrier = false; // vaccinated person carrying virus but healthy
     private State currentState;
 
     public Person(State s, boolean vaccinated, int i, int j) {
@@ -60,6 +61,10 @@ public class Person {
     public void setVax(boolean vax) {
         this.vax = vax;
     }
+
+    public boolean isCarrier() { return carrier; }
+    
+    public void setCarrier(boolean carrier) { this.carrier = carrier; }
 
     public void setCurrentState(State currentState) {
         this.currentState = currentState;
