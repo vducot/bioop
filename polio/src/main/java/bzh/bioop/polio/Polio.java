@@ -12,8 +12,10 @@ public class Polio {
     private int dim;
     private double pDeath;
     private double pSpread;
+    private double pMove;
 
-    public Polio(int citySize, double density, double deathProbability, double spreadProbability, double p_vax)
+    public Polio(int citySize, double density, double deathProbability, double spreadProbability, 
+        double p_vax, double moveProbability)
             throws Exception {
         // Create random map of dim citySize, with density, death probability when sick,
         // spread probability and vaccine coverage
@@ -40,17 +42,18 @@ public class Polio {
         dim = citySize;
         pDeath = deathProbability;
         pSpread = spreadProbability;
+        pMove = moveProbability;
     }
 
     public Polio(double density, double p_vax) throws Exception {
         // Call the generic constructor
-        this(10, density, 0.25, 0.8, p_vax);
+        this(10, density, 0.25, 0.8, p_vax, 0);
     }
 
     public Polio(double density) throws Exception {
         // Call the generic constructor
         // Vaccination rate is about 75% in the world
-        this(10, density, 0.25, 0.8, 0.75);
+        this(10, density, 0.25, 0.8, 0.75, 0);
     }
 
     public boolean isEndOfTheWorld() {
@@ -151,9 +154,24 @@ public class Polio {
         return false;
     }
 
+    private int[] findEmptyCase() {
+        int n = this.getDim();
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (this.matrix[i][j] == null) {
+                    int coords[] = new int[2];
+                    coords[0] = i;
+                    coords[1] = j;
+                    return coords;
+                }
+            }
+        }
+        return null;
+    }
     private Person nextState(int i, int j) {
         // Compute the next state of the cell
         Person p = matrix[i][j];
+        Random rand = new Random();
         if (p != null) { // person
             if (this.hasNeighborSick(i, j) && !p.isVax() && p.getCurrentState() != Person.State.CURED) { 
                 // Get sick if a neighbor is sick and the person is not vaccinated and not cured
@@ -161,7 +179,6 @@ public class Polio {
                 new_p.setCurrentState(Person.State.SICK);
                 return new_p;
             } else if (p.getCurrentState() == Person.State.SICK) { // Get cured or die
-                Random rand = new Random();
                 double x = rand.nextDouble();
                 if (x < this.getpDeath()) { // Die
                     Person new_p = new Person(p);
@@ -171,6 +188,29 @@ public class Polio {
                     new_p.setCurrentState(Person.State.CURED);
                 } 
             }
+        }
+
+        // People move at the end of the turn
+        // Each people have a probability to move, if they found an empty spot
+        if (this.getpMove() > 0) {
+            int n = this.getDim();
+            for (int row = 0; row < n; row++) {
+                for (int col = 0; col < n; col++) {
+                    if (this.matrix[row][col] != null) {
+                    double x = rand.nextDouble();
+                    if (x < this.getpMove()) {
+                        int coords[] = findEmptyCase();
+                        if (coords != null) { // null means the city is full of people
+                            // swap coords
+                            Person tmpP = this.matrix[row][col];
+                            this.matrix[row][col] = null;
+                            this.matrix[coords[0]][coords[1]] = tmpP;
+                            System.out.format("Someone move from (%d, %d) to (%d, %d)", row, col, coords[0], coords[1]);
+                        }
+                    }
+                }
+            }
+        }
         }
         return matrix[i][j];
     }
@@ -245,5 +285,9 @@ public class Polio {
 
     public double getpSpread() {
         return pSpread;
+    }
+
+    public double getpMove() {
+        return pMove;
     }
 }

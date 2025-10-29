@@ -39,6 +39,8 @@ public class TestPolio {
         System.out.println(po.hasNeighborSick(0,0));
         System.out.println(po.hasNeighborSick(0, 1));
         System.out.println(po.hasNeighborSick(1, 0));
+        po.propagatePolio(5);
+        po.cityDisplay();
         // System.out.println(po.hasNeighborSick(0, 2));
         // System.out.println(po.hasNeighborSick(1, 2));
         // System.out.println(po.hasNeighborSick(2, 1));
