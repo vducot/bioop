@@ -1,19 +1,24 @@
 package bzh.bioop.polio;
 
-import java.beans.PersistenceDelegate;
 import java.util.Random;
 
 /**
- * @author Vincent
+ * Polio epidemic simulation in a city represented by a matrix of Person.
+ * 
+ * Possible states : HEALTHY, SICK, CURED, DEAD
+ * Vaccinated persons have reduced probability of infection. Cured persons cannot be infected again.
+ * 
+ * @author Vincent & Gwendoline
  */
 public class Polio {
 
     private Person[][] matrix;
     private int dim;
-    private double pDeath;
-    private double pSpread;
+    private double pDeath; // death probability when sick
+    private double pSpread; // spread probability
+    private double pVaxPolio; // probability a vaccinated person still catches polio
 
-    public Polio(int citySize, double density, double deathProbability, double spreadProbability, double p_vax)
+    public Polio(int citySize, double density, double deathProbability, double spreadProbability, double p_vax, double vaxPolioProb)
             throws Exception {
         // Create random map of dim citySize, with density, death probability when sick,
         // spread probability and vaccine coverage
@@ -40,17 +45,18 @@ public class Polio {
         dim = citySize;
         pDeath = deathProbability;
         pSpread = spreadProbability;
+        pVaxPolio = vaxPolioProb;
     }
 
     public Polio(double density, double p_vax) throws Exception {
         // Call the generic constructor
-        this(10, density, 0.25, 0.8, p_vax);
+        this(10, density, 0.25, 0.8, p_vax, 0.05);
     }
 
     public Polio(double density) throws Exception {
         // Call the generic constructor
         // Vaccination rate is about 75% in the world
-        this(10, density, 0.25, 0.8, 0.75);
+        this(10, density, 0.25, 0.8, 0.75, 0.05);
     }
 
     public boolean isEndOfTheWorld() {
@@ -93,18 +99,20 @@ public class Polio {
     public void infect(int i, int j) {
         // Set the person [i][j] sick
         Person p = this.matrix[i][j];
-        if (p != null) {
+        if (p != null && !p.isVax()) { // does not infect vaccinated persons
             p.setCurrentState(Person.State.SICK);
-            System.out.println("Infected at position : " + p.getPos_i() + " ; "+ p.getPos_j());
+            System.out.println("Infected at position : " + p.getPos_i() + " ; " + p.getPos_j());
         }
-
     }
 
     public void infect() {
-        // Set a random person sick, if he/she's vaccinated
+        // choose a random non-vaccinated person
         Random rand = new Random();
-        int i = rand.nextInt(this.getDim());
-        int j = rand.nextInt(this.getDim());
+        int i, j;
+        do {
+            i = rand.nextInt(this.getDim());
+            j = rand.nextInt(this.getDim());
+        } while (this.matrix[i][j] == null || this.matrix[i][j].isVax());
         infect(i, j);
     }
 
@@ -117,36 +125,19 @@ public class Polio {
     }
 
     public boolean hasNeighborSick(int i, int j) {
-        // At least one neighbor is sick
+        // Return true if at least one neighbor is sick
         int n = this.getDim();
-        
-        // up
-        if (i - 1 >= 0 && isSick(i - 1, j))
-            return true;
-        // down
-        if (i + 1 >= n - 1 && isSick(i + 1, j))
-            return true;
-        // left
-        if (j - 1 >= 0 && isSick(i, j - 1))
-            return true;
-        // right
-        if (j + 1 >= n - 1 && isSick(i, j + 1))
-            return true;
 
-        // Diagonal
-        // up left
-        if (i - 1 >= 0 && j - 1 >= 0 && isSick(i - 1, j - 1)) {
-            return true;
-        }
-        // down left
-        if (i + 1 >= n - 1 && j - 1 >= 0 && isSick(i + 1, j - 1))
-            return true;
-        // up right
-        if (i - 1 >= 0 && j + 1 >= n - 1 && isSick(i - 1, j + 1))
-            return true;
-        // down right
-        if (i + 1 >= n && j + 1 >= n - 1 && isSick(i + 1, j + 1))
-            return true;
+        if (i - 1 >= 0 && isSick(i - 1, j)) return true; // up
+        if (i + 1 < n && isSick(i + 1, j)) return true; // down
+        if (j - 1 >= 0 && isSick(i, j - 1)) return true; // left
+        if (j + 1 < n && isSick(i, j + 1)) return true; // right
+
+        // diagonals
+        if (i - 1 >= 0 && j - 1 >= 0 && isSick(i - 1, j - 1)) return true; // up-left
+        if (i + 1 < n && j - 1 >= 0 && isSick(i + 1, j - 1)) return true; // down-left
+        if (i - 1 >= 0 && j + 1 < n && isSick(i - 1, j + 1)) return true; // up-right
+        if (i + 1 < n && j + 1 < n && isSick(i + 1, j + 1)) return true; // down-right
 
         return false;
     }
@@ -154,22 +145,31 @@ public class Polio {
     private Person nextState(int i, int j) {
         // Compute the next state of the cell
         Person p = matrix[i][j];
-        if (p != null) { // person
-            if (this.hasNeighborSick(i, j) && !p.isVax() && p.getCurrentState() != Person.State.CURED) { 
-                // Get sick if a neighbor is sick and the person is not vaccinated and not cured
-                Person new_p = new Person(p);
-                new_p.setCurrentState(Person.State.SICK);
-                return new_p;
-            } else if (p.getCurrentState() == Person.State.SICK) { // Get cured or die
+        if (p != null) { // if person
+            // if healthy and has a sick neighbor
+            if (p.getCurrentState() == Person.State.HEALTHY && hasNeighborSick(i, j)) {
+                Random rand = new Random();
+                // determine probability of infection
+                // if vax -> pVaxPolio else pSpread
+                double infectionProb = p.isVax() ? this.getpVaxPolio() : this.getpSpread();
+                // Randomly decide if this person becomes sick
+                if (rand.nextDouble() < infectionProb) {
+                    Person new_p = new Person(p);
+                    new_p.setCurrentState(Person.State.SICK);
+                    return new_p;
+                }
+            }
+            // if sick -> either die or get cured
+            else if (p.getCurrentState() == Person.State.SICK) {
                 Random rand = new Random();
                 double x = rand.nextDouble();
+                Person new_p = new Person(p);
                 if (x < this.getpDeath()) { // Die
-                    Person new_p = new Person(p);
                     new_p.setCurrentState(Person.State.DEAD);
                 } else { // Get cured
-                    Person new_p = new Person(p);
                     new_p.setCurrentState(Person.State.CURED);
-                } 
+                }
+                return new_p;
             }
         }
         return matrix[i][j];
@@ -198,7 +198,7 @@ public class Polio {
     }
 
     public void propagatePolio(int n) {
-        // Propagate the fire during n periods
+        // Propagate the polio during n periods
         for (int i = 0; i < n; i++) {
             try {
                 // System.out.println("Epoch "+i);
@@ -245,5 +245,9 @@ public class Polio {
 
     public double getpSpread() {
         return pSpread;
+    }
+
+    public double getpVaxPolio() {
+        return pVaxPolio;
     }
 }

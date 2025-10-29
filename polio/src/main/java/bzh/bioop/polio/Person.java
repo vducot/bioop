@@ -3,7 +3,7 @@ package bzh.bioop.polio;
 public class Person {
 
     public enum State {
-        EMPTY, HEALTHY, SICK, CURED, DEAD
+        HEALTHY, SICK, CURED, DEAD
     }
 
     private int pos_i;

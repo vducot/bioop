@@ -1,34 +1,7 @@
 package bzh.bioop.polio;
 
-import java.io.FileWriter;
-
 public class TestPolio {
     public static void main(String[] args) throws Exception {
-        // Test the effect of density on fire propagation
-        // FileWriter wr_time = new FileWriter("complexity.csv");
-        // FileWriter wr = new FileWriter("razed_diag.csv");
-        // wr.write("Density;Nb_razed\n");
-        // //for (double d=0.05 ; d <= 1; d+=0.05) {
-        // for (int n=100;n<500;n+=20) {
-        //     long startTime = System.currentTimeMillis();
-        //     int c = 0;
-        //     for (int j = 0 ; j < 100 ; j++) {
-        //         Automata iAC = new Automata(n, 0.3);
-        //         iAC.putFire();
-        //         iAC.propagateFire(36); // how many steps do we need ?
-        //         if (iAC.isRazed()) {
-        //             c++;
-        //         }
-        //     }
-        //     // System.out.println("With density "+String.format("%.2f",d)+", "+c+" forests completely razed");
-        //     // wr.write(String.format("%.2f",n)+";"+c+"\n");
-           
-        //     long estimatedTime = System.currentTimeMillis() - startTime;
-        //     wr_time.write(n+";"+estimatedTime+"\n");
-        // }
-        // wr.close();
-        // wr_time.close();
-
 
         Polio po = new Polio(0.8);
         System.out.println(" Is there any disease " + po.isOneSick());
@@ -44,28 +17,35 @@ public class TestPolio {
         // System.out.println(po.hasNeighborSick(2, 1));
         // System.out.println(po.hasNeighborSick(2, 2));
         // System.out.println(po.hasNeighborSick(2, 3));
+
+        // // --- City creation ---
+        // // System.out.println("=== Realistic Polio Simulation ===");
+        // // Polio po = new Polio(10, 0.8, 0.02, 0.3, 0.75, 0.05);
+        // System.out.println("=== Testing Simulation ===");
+        // Polio po = new Polio(10, 0.8, 0.25, 0.8, 0.5, 0.1);
+        // System.out.println("Initial city:");
+        // po.cityDisplay();
+
+        // // Random infection of a non-vaccinated person
+        // po.infect();
+        // System.out.println("\nAfter first infection:");
+        // po.cityDisplay();
+
+        // // --- Simulation ---
+        // int step = 0;
+        // while (po.isOneSick() && !po.isEndOfTheWorld()) {
+        //     step++;
+        //     System.out.println("\n--- Step " + step + " ---");
+        //     po.propagatePolio(1);
+        //     po.cityDisplay();
+        // }
+
+        // System.out.println("\nSimulation ended after " + step + " steps.");
+        // if (po.isEndOfTheWorld()) {
+        //     System.out.println("Everyone is dead.");
+        // } else {
+        //     System.out.println("Epidemic is over (no one sick).");
+        // }
         
-
-        // Automata iAC = new Automata(5, 0.8);
-        // iAC.putFire(2, 2);
-        // iAC.forestDisplay();
-        // System.out.println("Propagate ! \n\n");
-        // iAC.propagateFire(4);
-        // iAC.forestDisplay();
-        // System.out.println(" Is the forest completely rased ? " + iAC.isRazed());
-        // Automata jAC = new Automata(25, 0.8);
-        // System.out.println(" Is the forest on fire ? " + jAC.isOnFire());
-        // System.out.println(" Is the forest completely rased ? " + jAC.isRazed());
-        // jAC.forestDisplay();
-
-        // Automata kAC = new Automata(20, 0.7);
-        // kAC.putFire(20,20);
-        // kAC.putFire();
-        // System.out.println(" Is the forest on fire ? " + kAC.isOnFire());
-        // System.out.println(" Is the forest completely rased ? " + kAC.isRazed());
-        // kAC.forestDisplay();
-
-        // // Should throw an exception
-        // Automata zAC = new Automata(2, 0.5);
     }
 }
