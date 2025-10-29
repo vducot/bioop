@@ -117,28 +117,35 @@ public class Polio {
     }
 
     private boolean isHealthy(int i, int j) {
+        // Return true if there is a person healthy at the given position
         return (this.matrix[i][j] != null && this.matrix[i][j].getCurrentState() == Person.State.HEALTHY);
     }
 
     private boolean isCured(int i, int j) {
+        // Return true if there is a person cured at the given position
         return (this.matrix[i][j] != null && this.matrix[i][j].getCurrentState() == Person.State.CURED);
     }
 
-    public boolean hasNeighborSick(int i, int j) {
-        // Return true if at least one neighbor is sick
+    public boolean hasNeighborInfectious(int i, int j) {
+        // Return true if at least one neighbor is sick or a carrier
         int n = this.getDim();
 
-        if (i - 1 >= 0 && isSick(i - 1, j)) return true; // up
-        if (i + 1 < n && isSick(i + 1, j)) return true; // down
-        if (j - 1 >= 0 && isSick(i, j - 1)) return true; // left
-        if (j + 1 < n && isSick(i, j + 1)) return true; // right
+        int[][] neighbors = {
+        {-1,0},{1,0},{0,-1},{0,1},
+        {-1,-1},{-1,1},{1,-1},{1,1}
+        };
 
-        // diagonals
-        if (i - 1 >= 0 && j - 1 >= 0 && isSick(i - 1, j - 1)) return true; // up-left
-        if (i + 1 < n && j - 1 >= 0 && isSick(i + 1, j - 1)) return true; // down-left
-        if (i - 1 >= 0 && j + 1 < n && isSick(i - 1, j + 1)) return true; // up-right
-        if (i + 1 < n && j + 1 < n && isSick(i + 1, j + 1)) return true; // down-right
-
+        for (int[] nb : neighbors) {
+            int ni = i + nb[0];
+            int nj = j + nb[1];
+            if (ni >= 0 && ni < n && nj >= 0 && nj < n) {
+                Person p = matrix[ni][nj];
+                if (p != null && 
+                (p.getCurrentState() == Person.State.SICK || p.isCarrier())) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -146,17 +153,24 @@ public class Polio {
         // Compute the next state of the cell
         Person p = matrix[i][j];
         if (p != null) { // if person
-            // if healthy and has a sick neighbor
-            if (p.getCurrentState() == Person.State.HEALTHY && hasNeighborSick(i, j)) {
+            // if healthy and has an infectious neighbor -> may become sick
+            if (p.getCurrentState() == Person.State.HEALTHY && this.hasNeighborInfectious(i, j)) {
                 Random rand = new Random();
-                // determine probability of infection
-                // if vax -> pVaxPolio else pSpread
-                double infectionProb = p.isVax() ? this.getpVaxPolio() : this.getpSpread();
-                // Randomly decide if this person becomes sick
-                if (rand.nextDouble() < infectionProb) {
-                    Person new_p = new Person(p);
-                    new_p.setCurrentState(Person.State.SICK);
-                    return new_p;
+                // if vax -> pVaxPolio of being a carrier
+                if (p.isVax()) {
+                    if (!p.isCarrier() && rand.nextDouble() < this.getpVaxPolio()) {
+                        Person new_p = new Person(p);
+                        new_p.setCarrier(true);
+                        return new_p;
+                    }
+                } else {
+                    // if not vax -> pSpread of being sick
+                    // Randomly decide if this person becomes sick
+                    if (rand.nextDouble() < this.getpSpread()) {
+                        Person new_p = new Person(p);
+                        new_p.setCurrentState(Person.State.SICK);
+                        return new_p;
+                    }
                 }
             }
             // if sick -> either die or get cured
@@ -221,13 +235,18 @@ public class Polio {
                     c = ".";
                     continue;
                 }
-                switch (p.getCurrentState()) {
-                    // EMPTY, HEALTHY, SICK, CURED, DEAD
-                    case Person.State.HEALTHY -> c = ":-)";
-                    case Person.State.SICK -> c = ":-(";
-                    case Person.State.CURED -> c = ":-|";
-                    case Person.State.DEAD -> c = "X_X";
-                    default -> throw new AssertionError();
+                if (p.isCarrier() && p.isVax()) {
+                    // Vaccinated carrier (healthy but infectious)
+                    c = "\u001B[33mC\u001B[0m"; // yellow C
+                } else {
+                    switch (p.getCurrentState()) {
+                        // EMPTY, HEALTHY, SICK, CURED, DEAD
+                        case Person.State.HEALTHY -> c = ":-)";
+                        case Person.State.SICK -> c = ":-(";
+                        case Person.State.CURED -> c = ":-|";
+                        case Person.State.DEAD -> c = "X_X";
+                        default -> throw new AssertionError();
+                    }
                 }
                 System.out.print(c + "   ");
             }
