@@ -6,7 +6,8 @@ import java.util.Random;
  * Polio epidemic simulation in a city represented by a matrix of Person.
  * 
  * Possible states : HEALTHY, SICK, CURED, DEAD
- * Vaccinated persons have reduced probability of infection. Cured persons cannot be infected again.
+ * Vaccinated persons have reduced probability of infection. Cured persons
+ * cannot be infected again.
  * 
  * @author Vincent & Gwendoline
  */
@@ -19,8 +20,8 @@ public class Polio {
     private double pVaxPolio; // probability a vaccinated person still catches polio
     private double pMove;
 
-    public Polio(int citySize, double density, double deathProbability, double spreadProbability, 
-        double p_vax, double vaxPolioProb, double moveProbability)
+    public Polio(int citySize, double density, double deathProbability, double spreadProbability,
+            double p_vax, double vaxPolioProb, double moveProbability)
             throws Exception {
         // Create random map of dim citySize, with density, death probability when sick,
         // spread probability and vaccine coverage
@@ -59,7 +60,7 @@ public class Polio {
     public Polio(double density) throws Exception {
         // Call the generic constructor
         // Vaccination rate is about 75% in the world
-        this(10, density, 0.25, 0.8, 0.75, 0.05, 0);
+        this(10, density, 0.65, 0.8, 0.15, 0.05, 0);
     }
 
     public boolean isEndOfTheWorld() {
@@ -134,8 +135,8 @@ public class Polio {
         int n = this.getDim();
 
         int[][] neighbors = {
-        {-1,0},{1,0},{0,-1},{0,1},
-        {-1,-1},{-1,1},{1,-1},{1,1}
+                { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 },
+                { -1, -1 }, { -1, 1 }, { 1, -1 }, { 1, 1 }
         };
 
         for (int[] nb : neighbors) {
@@ -143,8 +144,8 @@ public class Polio {
             int nj = j + nb[1];
             if (ni >= 0 && ni < n && nj >= 0 && nj < n) {
                 Person p = matrix[ni][nj];
-                if (p != null && 
-                (p.getCurrentState() == Person.State.SICK || p.isCarrier())) {
+                if (p != null &&
+                        (p.getCurrentState() == Person.State.SICK || p.isCarrier())) {
                     return true;
                 }
             }
@@ -166,43 +167,78 @@ public class Polio {
         }
         return null;
     }
+
+    private int[] findEmptyCase(boolean randomExploration) {
+        Random rand = new Random();
+        int n = this.getDim();
+        int maxTries = n*n*2;
+        int cpt = 0;
+        while (cpt < maxTries) {
+            int i = rand.nextInt(n);
+            int j = rand.nextInt(n);
+            if (this.matrix[i][j] == null) {
+                int coords[] = new int[2];
+                coords[0] = i;
+                coords[1] = j;
+                return coords;
+            }
+        }
+        return null;
+    }
+
     private Person nextState(int i, int j) {
         // Compute the next state of the cell
         Person p = matrix[i][j];
         Random rand = new Random();
         if (p != null) { // if person
+            Person new_p = new Person(p);
             // if healthy and has an infectious neighbor -> may become sick
             if (p.getCurrentState() == Person.State.HEALTHY && this.hasNeighborInfectious(i, j)) {
                 // if vax -> pVaxPolio of being a carrier
                 if (p.isVax()) {
                     if (!p.isCarrier() && rand.nextDouble() < this.getpVaxPolio()) {
-                        Person new_p = new Person(p);
                         new_p.setCarrier(true);
-                        return new_p;
                     }
                 } else {
                     // if not vax -> pSpread of being sick
                     // Randomly decide if this person becomes sick
                     if (rand.nextDouble() < this.getpSpread()) {
-                        Person new_p = new Person(p);
                         new_p.setCurrentState(Person.State.SICK);
-                        return new_p;
                     }
                 }
             }
             // if sick -> either die or get cured
             else if (p.getCurrentState() == Person.State.SICK) {
                 double x = rand.nextDouble();
-                Person new_p = new Person(p);
                 if (x < this.getpDeath()) { // Die
                     new_p.setCurrentState(Person.State.DEAD);
                 } else { // Get cured
                     new_p.setCurrentState(Person.State.CURED);
                 }
-                return new_p;
             }
+
+            // People move at the end of the turn
+            // Each people have a probability to move, if they found an empty spot
+
+            if (this.getpMove() > 0) {
+                if (this.matrix[i][j] != null) {
+                    double x = rand.nextDouble();
+                    if (x < this.getpMove()) {
+                        int coords[] = findEmptyCase(true);
+                        if (coords != null) { // null means the city is full of people
+                            // swap coords
+                            this.matrix[i][j] = null;
+                            this.matrix[coords[0]][coords[1]] = new_p;
+                            new_p.setPos_i(coords[0]);
+                            new_p.setPos_j(coords[1]);
+                            //System.out.format("Someone move from (%d, %d) to (%d, %d)", i, j, coords[0], coords[1]);
+                        }
+                    }
+                }
+            }
+            return new_p;
         }
-        return matrix[i][j];
+        return null;
     }
 
     private void propagatePolio1() {
@@ -213,7 +249,12 @@ public class Polio {
         // Copy the current state to a new matrix
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                new_matrix[i][j] = new Person(this.matrix[i][j]);
+                Person p = this.matrix[i][j];
+                if (p == null) {
+                    new_matrix[i][j] = null;
+                } else {
+                    new_matrix[i][j] = new Person(p);
+                }
             }
         }
 
@@ -249,9 +290,8 @@ public class Polio {
                 Person p = this.matrix[i][j];
                 if (p == null) {
                     c = ".";
-                    continue;
                 }
-                if (p.isCarrier() && p.isVax()) {
+                else if (p.isCarrier() && p.isVax()) {
                     // Vaccinated carrier (healthy but infectious)
                     c = "\u001B[33mC\u001B[0m"; // yellow C
                 } else {
