@@ -3,11 +3,13 @@ package bzh.bioop.polio;
 public class TestPolio {
     public static void main(String[] args) throws Exception {
 
-        Polio po = new Polio(10, 0.6, 0.65, 0.8, 0.15, 0.05, 0.1);
+        //Polio po = new Polio(10, 0.6, 0.65, 0.8, 0.15, 0.05, 0.1, false);
+        Polio po = new Polio(20, 0.7, 0.65, 0.8, 0.15, 0.05, 0.1, true);
         System.out.println(" Is there any disease " + po.isOneSick());
         System.out.println(" Is everybody dead yet ? " + po.isEndOfTheWorld());
 
-        po.infect(1,1);
+        po.infect();
+        po.infect();
         po.cityDisplay();
         // System.out.println(po.hasNeighborInfectious(0,0));
         // System.out.println(po.hasNeighborInfectious(0, 1));
@@ -15,6 +17,8 @@ public class TestPolio {
         po.propagatePolio(2);
         System.out.println();
         po.cityDisplay();
+
+ 
         // System.out.println(po.hasNeighborSick(0, 2));
         // System.out.println(po.hasNeighborSick(1, 2));
         // System.out.println(po.hasNeighborSick(2, 1));

@@ -21,29 +21,17 @@ public class Polio {
     private double pMove;
 
     public Polio(int citySize, double density, double deathProbability, double spreadProbability,
-            double p_vax, double vaxPolioProb, double moveProbability)
+            double p_vax, double vaxPolioProb, double moveProbability, boolean clusters)
             throws Exception {
         // Create random map of dim citySize, with density, death probability when sick,
         // spread probability and vaccine coverage
         if (citySize < 10) {
             throw new Exception("city size must be >= 10");
         }
-        Random rand = new Random();
-        matrix = new Person[citySize][citySize];
-        for (int i = 0; i < citySize; i++) {
-            for (int j = 0; j < citySize; j++) {
-                float x = rand.nextFloat();
-                float y = rand.nextFloat();
-                if (x < density) {
-                    if (y < p_vax) {
-                        matrix[i][j] = new Person(Person.State.HEALTHY, true, i, j);
-                    } else {
-                        matrix[i][j] = new Person(Person.State.HEALTHY, false, i, j);
-                    }
-                } else {
-                    matrix[i][j] = null;
-                }
-            }
+        if (clusters) {
+            matrix = initMatrixWithClusters(citySize, density, p_vax);
+        } else {
+            matrix = initMatrixWithoutClusters(citySize, density, p_vax);
         }
         dim = citySize;
         pDeath = deathProbability;
@@ -54,13 +42,80 @@ public class Polio {
 
     public Polio(double density, double p_vax) throws Exception {
         // Call the generic constructor
-        this(10, density, 0.25, 0.8, p_vax, 0.05, 0);
+        this(10, density, 0.25, 0.8, p_vax, 0.05, 0, false);
     }
 
     public Polio(double density) throws Exception {
         // Call the generic constructor
         // Vaccination rate is about 75% in the world
-        this(10, density, 0.65, 0.8, 0.15, 0.05, 0);
+        this(10, density, 0.65, 0.8, 0.15, 0.05, 0, false);
+    }
+
+    private Person[][] initMatrixWithClusters(int citySize, double density, double p_vax) {
+        Random rand = new Random();
+        Person[][] l_matrix = new Person[citySize][citySize];
+        int totalPop = (int) Math.round(citySize * citySize * density);
+        // int clusterSize = citySize / 5; // Arbitrary
+        // int cluter_nb = totalPop / clusterSize;
+
+        // First, place a few people randomly in the city
+        int randomPeople = (int) Math.round(totalPop * 0.1);
+
+        for (int p = 0; p < randomPeople; p++) {
+            int x = rand.nextInt(citySize);
+            int y = rand.nextInt(citySize);
+            if (l_matrix[x][y] == null) {
+                float v = rand.nextFloat();
+                if (v < p_vax) {
+                    l_matrix[x][y] = new Person(Person.State.HEALTHY, true, x, y);
+                } else {
+                    l_matrix[x][y] = new Person(Person.State.HEALTHY, false, x, y);
+                }
+            }
+        }
+
+        // Then, iterate on the map and try to form clusters
+        for (int i = 0; i < citySize; i++) {
+            for (int j = 0; j < citySize; j++) {
+                float d = rand.nextFloat();
+                if (hasNeighbor(i, j)) { // Increase the probability to place a person
+                    d = d / 10;
+                }
+                float v = rand.nextFloat();
+                if (d < (density - 0.1)) { // We have already placed 10% of the population
+                    if (v < p_vax) {
+                        l_matrix[i][j] = new Person(Person.State.HEALTHY, true, i, j);
+                    } else {
+                        l_matrix[i][j] = new Person(Person.State.HEALTHY, false, i, j);
+                    }
+                } else {
+                    l_matrix[i][j] = null;
+                }
+            }
+        }
+
+        return l_matrix;
+    }
+
+    private Person[][] initMatrixWithoutClusters(int citySize, double density, double p_vax) {
+        Random rand = new Random();
+        Person[][] l_matrix = new Person[citySize][citySize];
+        for (int i = 0; i < citySize; i++) {
+            for (int j = 0; j < citySize; j++) {
+                float d = rand.nextFloat();
+                float v = rand.nextFloat();
+                if (d < density) {
+                    if (v < p_vax) {
+                        l_matrix[i][j] = new Person(Person.State.HEALTHY, true, i, j);
+                    } else {
+                        l_matrix[i][j] = new Person(Person.State.HEALTHY, false, i, j);
+                    }
+                } else {
+                    l_matrix[i][j] = null;
+                }
+            }
+        }
+        return l_matrix;
     }
 
     public boolean isEndOfTheWorld() {
@@ -130,6 +185,28 @@ public class Polio {
         return (this.matrix[i][j] != null && this.matrix[i][j].getCurrentState() == Person.State.CURED);
     }
 
+    public boolean hasNeighbor(int i, int j) {
+        // Return true if there is at least one neighbor
+        int n = this.getDim();
+
+        int[][] neighbors = {
+                { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 },
+                { -1, -1 }, { -1, 1 }, { 1, -1 }, { 1, 1 }
+        };
+
+        for (int[] nb : neighbors) {
+            int ni = i + nb[0];
+            int nj = j + nb[1];
+            if (ni >= 0 && ni < n && nj >= 0 && nj < n) {
+                Person p = matrix[ni][nj];
+                if (p != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean hasNeighborInfectious(int i, int j) {
         // Return true if at least one neighbor is sick or a carrier
         int n = this.getDim();
@@ -169,9 +246,12 @@ public class Polio {
     }
 
     private int[] findEmptyCase(boolean randomExploration) {
+        if (!randomExploration)
+            return findEmptyCase();
+
         Random rand = new Random();
         int n = this.getDim();
-        int maxTries = n*n*2;
+        int maxTries = n * n * 2;
         int cpt = 0;
         while (cpt < maxTries) {
             int i = rand.nextInt(n);
@@ -231,7 +311,8 @@ public class Polio {
                             this.matrix[coords[0]][coords[1]] = new_p;
                             new_p.setPos_i(coords[0]);
                             new_p.setPos_j(coords[1]);
-                            //System.out.format("Someone move from (%d, %d) to (%d, %d)", i, j, coords[0], coords[1]);
+                            // System.out.format("Someone move from (%d, %d) to (%d, %d)", i, j, coords[0],
+                            // coords[1]);
                         }
                     }
                 }
@@ -290,8 +371,7 @@ public class Polio {
                 Person p = this.matrix[i][j];
                 if (p == null) {
                     c = ".";
-                }
-                else if (p.isCarrier() && p.isVax()) {
+                } else if (p.isCarrier() && p.isVax()) {
                     // Vaccinated carrier (healthy but infectious)
                     c = "\u001B[33mC\u001B[0m"; // yellow C
                 } else {
