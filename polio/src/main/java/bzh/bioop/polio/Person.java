@@ -1,7 +1,17 @@
 package bzh.bioop.polio;
 
+/**
+ * Person class represents a person with its position in the city and health's state.
+ * 
+ * Possible states : HEALTHY, SICK, CURED, DEAD
+ * 
+ * @author Vincent & Gwendoline
+ */
 public class Person {
 
+    /**
+     * Health's state
+     */
     public enum State {
         HEALTHY, SICK, CURED, DEAD
     }
@@ -12,6 +22,13 @@ public class Person {
     private boolean carrier = false; // vaccinated person carrying virus but healthy
     private State currentState;
 
+    /**
+     * Constructor for Person class
+     * @param s person's initial state
+     * @param vaccinated true if the person is vaccinated
+     * @param i The x position in the city
+     * @param j The y position in the city
+     */
     public Person(State s, boolean vaccinated, int i, int j) {
         this.currentState = s;
         this.vax = vaccinated;
@@ -19,6 +36,11 @@ public class Person {
         this.pos_j = j;
     }
 
+    /**
+     * Call the global constructor. Create a person out of the city
+     * @param s person's initial state
+     * @param vaccinated true if the person is vaccinated
+     */
     public Person(State s, boolean vaccinated) {
         this.currentState = s;
         this.vax = vaccinated;
@@ -27,45 +49,83 @@ public class Person {
         this.pos_j = -1;
     }
 
-    public Person(Person s) {
-        this.pos_i = s.getPos_i();
-        this.pos_j = s.getPos_j();
-        this.vax = s.isVax();
-        this.currentState = s.getCurrentState();
+    /**
+     * Copy constructor
+     * @param p Another Person object
+     */
+    public Person(Person p) {
+        this.pos_i = p.getPos_i();
+        this.pos_j = p.getPos_j();
+        this.vax = p.isVax();
+        this.currentState = p.getCurrentState();
     }
 
+    // Getters and setters
+
+    /**
+     * Get the x position in the city map
+     * @return the x position 
+     */
     public int getPos_i() {
         return pos_i;
     }
 
+    /**
+     * Get the y position in the city map
+     * @return the y position 
+     */
     public int getPos_j() {
         return pos_j;
     }
 
+    /**
+     * Get the vaccinated status
+     * @return true is the person is vaccinated
+     */
     public boolean isVax() {
         return vax;
     }
 
+    /**
+     * Get the health status
+     * @return the health status
+     */
     public State getCurrentState() {
         return currentState;
     }
+    
+    /**
+     * Get the carrier status
+     * @return true if the person carry the disease
+     */
+    public boolean isCarrier() { return carrier; }
 
+    /**
+     * Set the x position in the city map
+     * @param the x position 
+     */
     public void setPos_i(int pos_i) {
         this.pos_i = pos_i;
     }
 
+    /**
+     * Set the y position in the city map
+     * @param the y position 
+     */
     public void setPos_j(int pos_j) {
         this.pos_j = pos_j;
     }
-
-    public void setVax(boolean vax) {
-        this.vax = vax;
-    }
-
-    public boolean isCarrier() { return carrier; }
     
+    /**
+     * Set the carrier status
+     * @param the carrier status
+     */
     public void setCarrier(boolean carrier) { this.carrier = carrier; }
 
+    /**
+     * Set the health status
+     * @param the health status
+     */
     public void setCurrentState(State currentState) {
         this.currentState = currentState;
     }
