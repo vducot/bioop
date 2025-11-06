@@ -502,4 +502,18 @@ public class Polio {
     public double getpMove() {
         return pMove;
     }
+
+    public Person[][] getMatrix() {
+        // Return a copy of the matrix
+        int n = this.dim;
+        Person[][] copy = new Person[n][n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (this.matrix[i][j] != null) {
+                    copy[i][j] = new Person(this.matrix[i][j]);
+                }
+            }
+        }
+        return copy;
+    }
 }
