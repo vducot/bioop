@@ -2,48 +2,27 @@ package bzh.bioop.polio;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * EpidemicGrid.java
  */
 public class EpidemicGrid {
 
-    // --- Possible states ---
-    public static final int HEALTHY = 0;
-    public static final int SICK = 1;
-    public static final int DEAD = 2;
-    public static final int VAX = 3;   // vaccinated (healthy carrier)
-    public static final int CURED = 4; // recovered
-
     public static class EpidemicPanel extends JPanel {
-        private int[][] grid;            // city matrix
-        private int cellSize = 48;       // size of each cell in pixels
-        private int padding = 8;         // padding around the grid
-        private Set<Point> patientZero = new HashSet<>(); // positions of patient zero
+        private Person[][] matrix;        // city matrix
+        private int cellSize = 48;        // size of each cell in pixels
+        private int padding = 8;          // padding around the grid
 
         public EpidemicPanel(int rows, int cols) {
-            this.grid = new int[rows][cols];
+            this.matrix = new Person[rows][cols];
             setPreferredSize(new Dimension(cols * cellSize + 2 * padding, rows * cellSize + 2 * padding));
             setBackground(Color.WHITE);
         }
 
-        /**
-         * Update the grid and repaint
-         */
-        public void setGrid(int[][] newGrid) {
-            if (newGrid == null) return;
-            this.grid = newGrid;
+        public void setMatrix(Person[][] matrix) {
+            this.matrix = matrix;
             revalidate();
             repaint();
-        }
-
-        /**
-         * Set patient zero position
-         */
-        public void setPatientZero(int i, int j) {
-            patientZero.add(new Point(j, i));
         }
 
         @Override
@@ -52,8 +31,10 @@ public class EpidemicGrid {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            int rows = grid.length;
-            int cols = grid[0].length;
+            if (matrix == null) return;
+
+            int rows = matrix.length;
+            int cols = matrix[0].length;
 
             for (int r = 0; r < rows; r++) {
                 for (int c = 0; c < cols; c++) {
@@ -68,19 +49,24 @@ public class EpidemicGrid {
                     g2.setColor(Color.LIGHT_GRAY);
                     g2.drawRect(x, y, cellSize, cellSize);
 
-                    // Draw state
-                    int state = grid[r][c];
-                    switch (state) {
-                        case HEALTHY -> drawStickman(g2, x, y, cellSize, new Color(34, 139, 34), false, false);
-                        case SICK -> drawStickman(g2, x, y, cellSize, new Color(178, 34, 34), true, false);
-                        case VAX -> drawStickman(g2, x, y, cellSize, new Color(218, 165, 32), false, true);
-                        case CURED -> drawStickman(g2, x, y, cellSize, new Color(218, 165, 32), false, false);
-                        case DEAD -> drawGravestone(g2, x, y, cellSize);
-                    }
+                    Person p = matrix[r][c];
+                    if (p != null) {
+                        boolean sick = p.getCurrentState() == Person.State.SICK;
+                        boolean vaxBadge = p.isVax();
+                        Color color = switch (p.getCurrentState()) {
+                            case HEALTHY -> new Color(60, 179, 113);
+                            case SICK -> new Color(220, 50, 60);
+                            case CURED -> new Color(255, 215, 0);
+                            case DEAD -> new Color(0,0,0); // won't be drawn, gravestone used
+                        };
 
-                    // Patient zero badge: small yellow star
-                    if (patientZero.contains(new Point(c, r))) {
-                        drawPatientZeroStar(g2, x, y, cellSize);
+                        if (p.getCurrentState() == Person.State.DEAD) {
+                            drawGravestone(g2, x, y, cellSize);
+                        } else if (p.isPatientZero()) {
+                            drawPatientZero(g2, x, y, cellSize, color, sick, vaxBadge);
+                        } else {
+                            drawStickman(g2, x, y, cellSize, color, sick, vaxBadge);
+                        }
                     }
                 }
             }
@@ -89,100 +75,143 @@ public class EpidemicGrid {
         }
 
         /**
-         * Draw a stickman.
-         * @param leaning whether is sick
-         * @param vaxBadge whether is vaccinated (blue V badge)
+         * Draw a stickman at the given coordinates
          */
-        private void drawStickman(Graphics2D g2, int x, int y, int size, Color color, boolean leaning, boolean vaxBadge) {
-            int cx = x + size/2;
-            int cy = y + size/2;
+        private void drawStickman(Graphics2D g2, int x, int y, int size, Color color, boolean sick, boolean vaxBadge) {
+            int cx = x + size / 2;
+            int cy = y + size / 2;
 
             // Head
-            int headR = size/5;
+            int headR = size / 5;
             int headX = cx - headR;
-            int headY = cy - size/2;
+            int headY = cy - size / 2;
             g2.setColor(color);
-            g2.fillOval(headX, headY, headR*2, headR*2);
+            g2.fillOval(headX, headY, headR * 2, headR * 2);
             g2.setColor(Color.BLACK);
-            g2.drawOval(headX, headY, headR*2, headR*2);
+            g2.drawOval(headX, headY, headR * 2, headR * 2);
 
             // Eyes
-            int eyeR = Math.max(1, headR/4);
-            g2.fillOval(cx - headR/2 - eyeR/2, headY + headR/2, eyeR, eyeR);
-            g2.fillOval(cx + headR/2 - eyeR/2, headY + headR/2, eyeR, eyeR);
+            int eyeR = Math.max(1, headR / 4);
+            g2.fillOval(cx - headR / 2 - eyeR / 2, headY + headR / 2, eyeR, eyeR);
+            g2.fillOval(cx + headR / 2 - eyeR / 2, headY + headR / 2, eyeR, eyeR);
 
-            // Body positions
-            int bodyY = headY + headR*2;
-            int bodyHeight = size/3;
-            int leanOffset = leaning ? size/8 : 0; // leaning stickman
+            // Mask if sick
+            if (sick) drawMask(g2, headX, headY, headR);
 
             // Body
-            g2.drawLine(cx, bodyY, cx + leanOffset, bodyY + bodyHeight);
+            g2.setColor(Color.BLACK);
+            int bodyY = headY + headR * 2;
+            int bodyHeight = size / 3;
+            g2.drawLine(cx, bodyY, cx, bodyY + bodyHeight);
 
             // Arms
-            int armLength = size/4;
-            g2.drawLine(cx, bodyY + size/12, cx - armLength + leanOffset, bodyY + size/3);
-            g2.drawLine(cx, bodyY + size/12, cx + armLength + leanOffset, bodyY + size/3);
+            int armLength = size / 4;
+            g2.drawLine(cx, bodyY + size / 12, cx - armLength, bodyY + size / 3);
+            g2.drawLine(cx, bodyY + size / 12, cx + armLength, bodyY + size / 3);
 
             // Legs
-            int legLength = size/4;
-            g2.drawLine(cx + leanOffset, bodyY + bodyHeight, cx - legLength + leanOffset, bodyY + bodyHeight + legLength);
-            g2.drawLine(cx + leanOffset, bodyY + bodyHeight, cx + legLength + leanOffset, bodyY + bodyHeight + legLength);
+            int legLength = size / 4;
+            g2.drawLine(cx, bodyY + bodyHeight, cx - legLength, bodyY + bodyHeight + legLength);
+            g2.drawLine(cx, bodyY + bodyHeight, cx + legLength, bodyY + bodyHeight + legLength);
 
             // Vaccination badge
             if (vaxBadge) drawVaccinationBadge(g2, x, y);
+
+            // Reset stroke to default
+            g2.setStroke(new BasicStroke(1f));
         }
 
         /**
-         * Draw a small "V" badge for vaccinated people
+         * Draw a vaccination badge on top-left of the cell
          */
         private void drawVaccinationBadge(Graphics2D g2, int x, int y) {
-            int badgeSize = cellSize/5;
+            int badgeSize = cellSize / 5;
             g2.setColor(Color.BLUE.darker());
             g2.fillOval(x + 2, y + 2, badgeSize, badgeSize);
             g2.setColor(Color.WHITE);
-            g2.setFont(new Font("Arial", Font.BOLD, badgeSize-2));
+            g2.setFont(new Font("Arial", Font.BOLD, badgeSize - 2));
             g2.drawString("V", x + 4, y + badgeSize);
         }
 
         /**
-         * Draw a gravestone with rounded top and RIP
+         * Draw a gravestone for dead person
          */
         private void drawGravestone(Graphics2D g2, int x, int y, int size) {
-            int width = (int)(size*0.6);
-            int height = (int)(size*0.7);
-            int gx = x + (size - width)/2;
-            int gy = y + size/6;
+            int width = (int) (size * 0.5);
+            int height = (int) (size * 0.7);
+            int arc    = width / 4;
+            int gx = x + (size - width) / 2;
+            int gy = y + (size - height)/ 2;
 
-            // Main tombstone
-            g2.setColor(new Color(200,200,200));
-            g2.fillRoundRect(gx, gy, width, height, width/2, width/2);
-
-            // Outline
+            g2.setColor(new Color(190, 190, 190));
+            g2.fillRoundRect(gx, gy, width, height, arc, arc);
             g2.setColor(Color.DARK_GRAY);
             g2.setStroke(new BasicStroke(2f));
-            g2.drawRoundRect(gx, gy, width, height, width/2, width/2);
+            g2.drawRoundRect(gx, gy, width, height, arc, arc);
 
-            // RIP text
+            int baseH = height / 8;
+            g2.setColor(new Color(160, 160, 160));
+            g2.fillRect(gx - width/8, gy + height - baseH, width + width/4, baseH);
+            g2.setColor(Color.DARK_GRAY);
+            g2.drawRect(gx - width/8, gy + height - baseH, width + width/4, baseH);
+
             g2.setColor(Color.BLACK);
-            g2.setFont(new Font("Serif", Font.BOLD, size/5));
+            g2.setFont(new Font("Serif", Font.BOLD, size / 6));
             FontMetrics fm = g2.getFontMetrics();
-            String rip = "RIP";
-            int tx = gx + (width - fm.stringWidth(rip))/2;
-            int ty = gy + height/2 + fm.getAscent()/2;
+            String rip = "R.I.P";
+            int tx = gx + (width - fm.stringWidth(rip)) / 2;
+            int ty = gy + height / 2 + fm.getAscent() / 3;
             g2.drawString(rip, tx, ty);
+
+            // Reset stroke
+            g2.setStroke(new BasicStroke(1f));
         }
 
         /**
-         * Draw patient zero badge (small yellow star) on top-left
+         * Draw patient zero with badge
          */
-        private void drawPatientZeroStar(Graphics2D g2, int x, int y, int size) {
-            int starSize = size/2;
-            // four pointed star so 9 points
-            int[] xs  = {x + 2 + starSize/2, x + 2 + starSize*3/4, x + 2 + starSize, x + 2 + starSize*3/4, x + 2 + starSize/2,  x + 2 + starSize/4, x + 2 + 0, x + 2 + starSize/4};
-            int[] ys  = {y + 2 + starSize, y + 2 + starSize*3/4, y + 2 + starSize/2, y + 2 + starSize/4, y + 2 + 0, y + 2 + starSize/4, y + 2 + starSize/2, y + 2 + starSize*3/4};
-            g2.setColor(Color.YELLOW);
-            g2.fillPolygon(xs, ys, 8);
+        private void drawPatientZero(Graphics2D g2, int x, int y, int size, Color color, boolean sick, boolean vaxBadge) {
+            drawStickman(g2, x, y, size, color, sick, vaxBadge);
+
+            // Badge P₀ top-left
+            int badgeSize = size / 3;
+            int badgeX = x + 2;
+            int badgeY = y + 2;
+
+            g2.setColor(Color.RED);
+            g2.fillOval(badgeX, badgeY, badgeSize, badgeSize);
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(1.5f));
+            g2.drawOval(badgeX, badgeY, badgeSize, badgeSize);
+
+            g2.setFont(new Font("SansSerif", Font.BOLD, badgeSize / 2));
+            FontMetrics fm = g2.getFontMetrics();
+            String text = "P₀";
+            int textWidth = fm.stringWidth(text);
+            int textHeight = fm.getAscent();
+            int textX = badgeX + (badgeSize - textWidth) / 2;
+            int textY = badgeY + (badgeSize + textHeight / 2) / 2;
+            g2.drawString(text, textX, textY);
+
+            // Reset stroke
+            g2.setStroke(new BasicStroke(1f));
+        }
+
+        /**
+         * Draw a mask for sick persons
+         */
+        private void drawMask(Graphics2D g2, int headX, int headY, int headR) {
+            g2.setColor(new Color(255, 255, 255));
+            int maskWidth = (int)(headR * 1.4);
+            int maskHeight = (int)(headR * 0.8);
+            int maskX = headX + headR - maskWidth / 2;
+            int maskY = headY + headR;
+            g2.fillRoundRect(maskX, maskY, maskWidth, maskHeight, 5, 5);
+
+            // Mask straps
+            g2.setColor(new Color(220, 220, 220));
+            g2.drawLine(maskX, maskY + maskHeight / 2, maskX - 3, maskY + maskHeight / 2 - 1);
+            g2.drawLine(maskX + maskWidth, maskY + maskHeight / 2, maskX + maskWidth + 3, maskY + maskHeight / 2 - 1);
         }
     }
 }
