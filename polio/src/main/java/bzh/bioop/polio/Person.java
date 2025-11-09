@@ -21,6 +21,7 @@ public class Person {
     private boolean vax;
     private boolean carrier = false; // vaccinated person carrying virus but healthy
     private State currentState;
+    private boolean patientZero = false;
 
     /**
      * Constructor for Person class
@@ -58,6 +59,7 @@ public class Person {
         this.pos_j = p.getPos_j();
         this.vax = p.isVax();
         this.currentState = p.getCurrentState();
+        this.patientZero = p.isPatientZero();
     }
 
     // Getters and setters
@@ -101,6 +103,14 @@ public class Person {
     public boolean isCarrier() { return carrier; }
 
     /**
+     * Get the patient zero status
+     * @return true if the person is patient zero
+     */
+    public boolean isPatientZero() {
+        return patientZero;
+    }
+
+    /**
      * Set the x position in the city map
      * @param the x position 
      */
@@ -130,4 +140,11 @@ public class Person {
         this.currentState = currentState;
     }
 
+    /**
+     * Set the patient zero status
+     * @param the patient zero status
+     */
+    public void setPatientZero(boolean patientZero) {
+        this.patientZero = patientZero;
+    }
 }
