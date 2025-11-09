@@ -199,10 +199,10 @@ public class Polio {
         Person p = this.matrix[i][j];
         if (p != null && !p.isVax()) { // does not infect vaccinated people
             p.setCurrentState(Person.State.SICK);
+            p.setPatientZero(true);
             System.out.println("Infected at position : " + p.getPos_i() + " ; " + p.getPos_j());
         }
     }
-
 
     /**
      * Infect a person at a random position. Nothing happen if the case is empty.
@@ -321,67 +321,68 @@ public class Polio {
 
 
     /**
-     * Compute the next state of a case
+     * Compute the next state of a case and write the result into new_matrix.
+     * Does NOT modify this.matrix (the current state).
      * @param i The x position in the city
      * @param j The y position in the city
-     * @return A Person with updated status, or null if the case is empty.
+     * @param new_matrix The matrix to fill with the next-state persons
      */
-    private Person nextState(int i, int j) {
-        // Compute the next state of the cell
+    private void nextState(int i, int j, Person[][] new_matrix) {
         Person p = matrix[i][j];
         Random rand = new Random();
-        if (p != null) { // if person
-            Person new_p = new Person(p);
-
-            // if healthy and has an infectious neighbor -> may become sick
-            if (p.getCurrentState() == Person.State.HEALTHY && this.hasNeighborInfectious(i, j)) {
-                
-                // if vax -> pVaxPolio of being a carrier
-                if (p.isVax()) {
-                    if (!p.isCarrier() && rand.nextDouble() < this.getpVaxPolio()) {
-                        new_p.setCarrier(true);
-                    }
-                } else {
-                    // if not vax -> pSpread of being sick
-                    // Randomly decide if this person becomes sick
-                    if (rand.nextDouble() < this.getpSpread()) {
-                        new_p.setCurrentState(Person.State.SICK);
-                    }
-                }
-            }
-            // if sick -> either die or get cured
-            else if (p.getCurrentState() == Person.State.SICK) {
-                double x = rand.nextDouble();
-                if (x < this.getpDeath()) { // Die
-                    new_p.setCurrentState(Person.State.DEAD);
-                } else { // Get cured
-                    new_p.setCurrentState(Person.State.CURED);
-                }
-            }
-
-            // People move at the end of the turn
-            // Each people have a probability to move, if they found an empty spot
-
-            if (this.getpMove() > 0) {
-                if (this.matrix[i][j] != null) {
-                    double x = rand.nextDouble();
-                    if (x < this.getpMove()) {
-                        int coords[] = findEmptyCase(true);
-                        if (coords != null) { // null means the city is full of people
-                            // swap coords
-                            this.matrix[i][j] = null;
-                            this.matrix[coords[0]][coords[1]] = new_p;
-                            new_p.setPos_i(coords[0]);
-                            new_p.setPos_j(coords[1]);
-                            // System.out.format("Someone move from (%d, %d) to (%d, %d)", i, j, coords[0],
-                            // coords[1]);
-                        }
-                    }
-                }
-            }
-            return new_p;
+        if (p == null) {
+            // nothing to do: leave new_matrix[i][j] as null
+            return;
         }
-        return null;
+
+        Person new_p = new Person(p);
+
+        // if healthy and has an infectious neighbor -> may become sick
+        if (p.getCurrentState() == Person.State.HEALTHY && this.hasNeighborInfectious(i, j)) {
+            if (p.isVax()) {
+                // vaccinated people may become carriers
+                if (!p.isCarrier() && rand.nextDouble() < this.getpVaxPolio()) {
+                    new_p.setCarrier(true);
+                }
+                // vaccinated people may become sick with a reduced probability
+                else if (rand.nextDouble() < this.getpSpread() * 0.05) {
+                    new_p.setCurrentState(Person.State.SICK);
+                }
+            } else {
+                if (rand.nextDouble() < this.getpSpread()) {
+                    new_p.setCurrentState(Person.State.SICK);
+                }
+            }
+        }
+        // if sick -> either die or get cured
+        else if (p.getCurrentState() == Person.State.SICK) {
+            double x = rand.nextDouble();
+            if (x < this.getpDeath()) { // Die
+                new_p.setCurrentState(Person.State.DEAD);
+            } else { // Get cured
+                new_p.setCurrentState(Person.State.CURED);
+            }
+        }
+
+        // People move at the end of the turn
+        if (this.getpMove() > 0) {
+            double x = rand.nextDouble();
+            if (x < this.getpMove()) {
+                int coords[] = findEmptyCase(true); // finds empty based on current this.matrix
+                if (coords != null) {
+                    // place person in destination in new_matrix
+                    new_p.setPos_i(coords[0]);
+                    new_p.setPos_j(coords[1]);
+                    new_matrix[coords[0]][coords[1]] = new_p;
+                    return; // original cell will be left null in new_matrix
+                }
+            }
+        }
+
+        // If not moved, keep person in the same coordinates in new_matrix
+        new_p.setPos_i(i);
+        new_p.setPos_j(j);
+        new_matrix[i][j] = new_p;
     }
 
     /**
@@ -389,27 +390,16 @@ public class Polio {
      */
     private void propagatePolio1() {
         int n = this.getDim();
-        Person[][] new_matrix = new Person[n][n];
+        Person[][] new_matrix = new Person[n][n]; // start empty => nextState fills it
 
-        // Copy the current state to a new matrix
+        // Compute the new state of each cell (nextState writes into new_matrix)
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                Person p = this.matrix[i][j];
-                if (p == null) {
-                    new_matrix[i][j] = null;
-                } else {
-                    new_matrix[i][j] = new Person(p);
-                }
+                this.nextState(i, j, new_matrix);
             }
         }
 
-        // Compute the new state of each cell
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                // next_state reads the current matrix
-                new_matrix[i][j] = this.nextState(i, j);
-            }
-        }
+        // replace the current matrix by the computed one
         this.matrix = new_matrix;
     }
 
@@ -446,11 +436,10 @@ public class Polio {
                     c = "\u001B[33mC\u001B[0m"; // yellow C
                 } else {
                     switch (p.getCurrentState()) {
-                        // EMPTY, HEALTHY, SICK, CURED, DEAD
-                        case Person.State.HEALTHY -> c = ":-)";
-                        case Person.State.SICK -> c = ":-(";
-                        case Person.State.CURED -> c = ":-|";
-                        case Person.State.DEAD -> c = "X_X";
+                        case HEALTHY -> c = "\u001B[32mH\u001B[0m"; // green
+                        case SICK -> c = "\u001B[31mI\u001B[0m";   // red
+                        case CURED -> c = "\u001B[34mR\u001B[0m";  // blue
+                        case DEAD -> c = "\u001B[90mX\u001B[0m";   // grey
                         default -> throw new AssertionError();
                     }
                 }
