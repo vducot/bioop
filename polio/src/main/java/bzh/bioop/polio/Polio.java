@@ -365,7 +365,7 @@ public class Polio {
         }
 
         // People move at the end of the turn
-        if (this.getpMove() > 0) {
+        if (new_p.getCurrentState() != Person.State.DEAD && this.getpMove() > 0) {
             double x = rand.nextDouble();
             if (x < this.getpMove()) {
                 int coords[] = findEmptyCase(true); // finds empty based on current this.matrix
