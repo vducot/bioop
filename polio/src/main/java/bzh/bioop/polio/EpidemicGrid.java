@@ -174,8 +174,8 @@ public class EpidemicGrid {
             drawStickman(g2, x, y, size, color, sick, vaxBadge);
 
             // Badge P₀ top-left
-            int badgeSize = size / 3;
-            int badgeX = x + 2;
+            int badgeSize = (int) (size / 3.5);
+            int badgeX = x + 34;
             int badgeY = y + 2;
 
             g2.setColor(Color.RED);
