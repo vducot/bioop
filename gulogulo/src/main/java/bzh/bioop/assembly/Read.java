@@ -37,7 +37,7 @@ public class Read implements Sequence {
 		int minLength = Math.min(s1.length(), s2.length());
 		int maxLength = Math.max(s1.length(), s2.length());
 		int diffCount = 0;
-		int i = 0;
+		int i;
 		for (i = 0; i < minLength; i++) {
 			if (s1.charAt(i) != s2.charAt(i)) {
 				diffCount++;
@@ -57,7 +57,7 @@ public class Read implements Sequence {
 		int minLength = Math.min(s1.length(), s2.length());
 		int maxLength = Math.max(s1.length(), s2.length());
 		int diffCount = 0;
-		int i = 0;
+		int i;
 		for (i = 0; i < minLength; i++) {
 			if (s1.charAt(i) != s2.charAt(i)) {
 				diffCount++;

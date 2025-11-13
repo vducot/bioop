@@ -1,10 +1,5 @@
 package bzh.bioop.assembly;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -34,14 +29,17 @@ public class Contig implements Sequence {
 		nb_fusions = 0;
 	}
 
+	@Override
 	public String toString() {
 		return contig;
 	}
 
+    @Override
 	public int getLength() {
 		return len;
 	}
 
+    @Override
 	public String getSeq() {
 		return contig;
 	}
@@ -55,6 +53,7 @@ public class Contig implements Sequence {
 	 * 
 	 * @return the formatted sequence
 	 */
+    @Override
 	public String fastaFormat() {
 		StringBuilder sb = new StringBuilder();
 		int lineLength = 60;

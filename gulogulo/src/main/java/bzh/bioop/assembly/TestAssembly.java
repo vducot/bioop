@@ -10,9 +10,12 @@ import java.util.List;
 
 public class TestAssembly {
     public static void main(String[] args) throws IOException {
-        String USAGE = "java assembly.jar <reads file> [perror]";
-        args = new String[1];
-        args[0] = "data/my_reads.txt";
+        String USAGE = """
+                       java assembly.jar <reads file> [perror]
+                       reads file : the path of the file containing the reads to assemble
+                       perror : percentage of errors accepted in the assembling""";
+        // args = new String[1];
+        // args[0] = "data/my_reads.txt";
         
         if (args.length < 1) {
             String art = "\u001B[32m.-./`)\u001B[0m  _______  \u001B[32m.-./`)\u001B[0m    .-'''-.    ____      \n" +
@@ -30,15 +33,6 @@ public class TestAssembly {
                 " \u001B[34m|_____| |__|__| |______ |  \\_|\u001B[0m             \u001B[33m\\/   __|__ |  \\_| |_____  |______ |  \\_|    |\u001B[0m\n" ;
 
             System.out.println(names);
-
-            String project = "\u001B[31m__________                   __        __      ________      .__                         .__\u001B[0m           \n" +
-                "\u001B[31m\\______   \\_______  ____    |__| _____/  |_   /  _____/ __ __|  |   ____      ____  __ __|  |   ____\u001B[0m   \n" +
-                " \u001B[31m|     ___/\\_  __ \\/  _ \\   |  |/ __ \\   __\\ /   \\  ___|  |  \\  |  /  _ \\    / ___\\|  |  \\  |  /  _ \\\u001B[0m  \n" +
-                " \u001B[31m|    |     |  | \\(  <_> )  |  \\  ___/|  |   \\    \\_\\  \\  |  /  |_(  <_> )  / /_/  >  |  /  |_(  <_> )\u001B[0m \n" +
-                " \u001B[31m|____|     |__|   \\____/\\__|  |\\___  >__|    \\______  /____/|____/\\____/   \\___  /|____/|____/\\____/\u001B[0m  \n" +
-                "                        \u001B[31m\\______|    \\/               \\/                    /_____/\u001B[0m                     ";
-
-            System.out.println(project);
             System.err.println(USAGE);
             System.exit(1);
         }
@@ -49,12 +43,6 @@ public class TestAssembly {
         if (args.length > 1) {
             perror = Float.valueOf(args[1]);
         }
-
-        // Contig c_nul = new Contig("AZERTYUIOP",0);
-        // Read r = new Read("YUIOPQS");
-        // int b = c_nul.bestOverlap(r);
-        // System.out.println("Best overlap : "+b);
-        // System.exit(1);
 
         // Path filepath = Paths.get("gulogulo/data/my_reads.txt");
         Path filepath = Paths.get(readfile);
@@ -77,8 +65,9 @@ public class TestAssembly {
         while (true) { // loop while still reads with overlap > 8 to assemble
             int index = contig.nextReadWithError((LinkedList<Read>) list_reads, perror); // find the index of read with
                                                                                          // best overlap in the list
-            if (index == -1)
+            if (index == -1) {
                 break; // if no read whre overlap > 8
+            }
             // remove the best read from the list
             Read chosen = list_reads.remove(index);
             System.out.println("Fusion with " + index + ", still " + (list_reads.size())
