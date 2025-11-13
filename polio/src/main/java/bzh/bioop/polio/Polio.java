@@ -210,11 +210,17 @@ public class Polio {
         if (p != null) {
             if (p.isVax()) {
                 Random rand = new Random();
-                Float x = rand.nextFloat();
-                if (x < 0.15) { // 15% proba to be infected when vaccinated
+                // vaccinated people may become carriers
+                if (!p.isCarrier() && rand.nextDouble() < this.getpVaxPolio()) {
+                    p.setCarrier(true);
+                    p.setPatientZero(true);
+                    System.out.println("Carrier at position : " + p.getPos_i() + " ; " + p.getPos_j());
+                }
+                // vaccinated people may become sick with a reduced probability
+                else if (rand.nextDouble() < this.getpSpread() * 0.05) {
                     p.setCurrentState(Person.State.SICK);
                     p.setPatientZero(true);
-                    System.out.println("Infected at position : " + p.getPos_i() + " ; " + p.getPos_j());
+                    System.out.println("Infected vax at position : " + p.getPos_i() + " ; " + p.getPos_j());
                 }
             } else { // Not vaccinated, always get sick
                 p.setCurrentState(Person.State.SICK);

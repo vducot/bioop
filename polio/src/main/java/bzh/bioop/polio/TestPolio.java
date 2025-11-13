@@ -1,7 +1,6 @@
 package bzh.bioop.polio;
 
 import javax.swing.*;
-import java.awt.*;
 
 /**
  * TestPolio.java
