@@ -10,7 +10,6 @@ public class Read implements Sequence {
 
 	public static void main(String[] args) {
 		Read r1 = new Read("azertyuiop");
-		// Read r2 = new Read("azertyuiopjdg");
 		Read r2 = new Read("ertyuiopui");
 		float perror = (float)0.9;
 		System.out.println(nearlyEquals(r1.getSeq(),r2.getSeq(), perror));
@@ -90,11 +89,11 @@ public class Read implements Sequence {
 	public String fastaFormat() {
 		StringBuilder sb = new StringBuilder();
 		int lineLength = 60;
-		for (int i = 0; i < seq.length(); i += lineLength) {
-			if (i + lineLength < seq.length()) {
-				sb.append(seq, i, i + lineLength).append("\n");
+		for (int i = 0; i < this.getLength(); i += lineLength) {
+			if (i + lineLength < this.getLength()) {
+				sb.append(this.getSeq(), i, i + lineLength).append("\n");
 			} else {
-				sb.append(seq.substring(i)).append("\n");
+				sb.append(this.getSeq().substring(i)).append("\n");
 			}
 		}
 		return sb.toString();

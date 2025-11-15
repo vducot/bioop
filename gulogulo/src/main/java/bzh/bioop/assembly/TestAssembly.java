@@ -8,14 +8,21 @@ import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * Main class for Assembly program
+ * @author Vincent Ducot & Gwendoline Iborra
+ * @param args
+ * @throws IOException
+ */
 public class TestAssembly {
     public static void main(String[] args) throws IOException {
         String USAGE = """
-                       java assembly.jar <reads file> [perror]
-                       reads file : the path of the file containing the reads to assemble
-                       perror : percentage of errors accepted in the assembling""";
+                       USAGE : java assembly.jar <reads file> [perror]
+                       - reads file : the path of the file containing the reads to assemble
+                       - perror : percentage of errors accepted in the assembling""";
         // args = new String[1];
         // args[0] = "data/my_reads.txt";
+        //args[0] = "data/short_with_errors02then04.txt";
         
         if (args.length < 1) {
             String art = "\u001B[32m.-./`)\u001B[0m  _______  \u001B[32m.-./`)\u001B[0m    .-'''-.    ____      \n" +
@@ -26,7 +33,8 @@ public class TestAssembly {
 				" |   | |  \u001B[32m( ' )\u001B[0m  \\|   | .---.  \\  :.'   \u001B[32m_\u001B[0m    |  \n" +
 				" |   | | \u001B[32m(_{;}_)\u001B[0m ||   | \\    `-'  ||  \u001B[32m_( )_\u001B[0m  |  \n" +
 				" |   | |  \u001B[32m(_,_)\u001B[0m  /|   |  \\       / \\ \u001B[32m(_ o _)\u001B[0m /  \n" +
-				" '---' /_______.' '---'   `-...-'   '.\u001B[32m(_,_)\u001B[0m.'   \n";
+				" '---' /_______.' '---'   `-...-'   '.\u001B[32m(_,_)\u001B[0m.'   \n" +
+                "\033[3mInfo & Biology to Improve Sequences Alignement\033[0m\n";
             System.out.println(art);
             String names = "  \u001B[34m______ _  _  _ _______ __   _\u001B[0m           \u001B[33m_    _ _____ __   _ _______ _______ __   _ _______\u001B[0m\n" +
                 " \u001B[34m|  ____ |  |  | |______ | \\  |\u001B[0m            \u001B[33m\\  /    |   | \\  | |       |______ | \\  |    |\u001B[0m\n" +
@@ -39,12 +47,11 @@ public class TestAssembly {
 
         String readfile = args[0];
 
-        float perror = 0;
+        float perror = (float)0;
         if (args.length > 1) {
             perror = Float.valueOf(args[1]);
         }
 
-        // Path filepath = Paths.get("gulogulo/data/my_reads.txt");
         Path filepath = Paths.get(readfile);
 
         List<Read> list_reads = new LinkedList<>();
@@ -59,7 +66,6 @@ public class TestAssembly {
         // Create a Contig with the first sequence of the list
         Contig contig = new Contig(list_reads.get(0));
         list_reads.remove(0);
-        // float perror = (float) 0.01;
 
         // Greedy loop
         while (true) { // loop while still reads with overlap > 8 to assemble

@@ -29,24 +29,6 @@ public class Contig implements Sequence {
 		nb_fusions = 0;
 	}
 
-	@Override
-	public String toString() {
-		return contig;
-	}
-
-    @Override
-	public int getLength() {
-		return len;
-	}
-
-    @Override
-	public String getSeq() {
-		return contig;
-	}
-
-	public int getReadsCount() {
-		return nb_fusions;
-	}
 
 	/**
 	 * Format the sequence like Fasta, 60 nucleotides max per line
@@ -57,11 +39,11 @@ public class Contig implements Sequence {
 	public String fastaFormat() {
 		StringBuilder sb = new StringBuilder();
 		int lineLength = 60;
-		for (int i = 0; i < contig.length(); i += lineLength) {
-			if (i + lineLength < contig.length()) {
-				sb.append(contig, i, i + lineLength).append("\n");
+		for (int i = 0; i < this.getLength(); i += lineLength) {
+			if (i + lineLength < this.getLength()) {
+				sb.append(this.getSeq(), i, i + lineLength).append("\n");
 			} else {
-				sb.append(contig.substring(i)).append("\n");
+				sb.append(this.getSeq().substring(i)).append("\n");
 			}
 		}
 		return sb.toString();
@@ -172,10 +154,30 @@ public class Contig implements Sequence {
 		String rseq = r.getSeq();
 		String newContigSeq;
 		if (overlap == 0) {
-			newContigSeq = contig + rseq;
+			newContigSeq = this.getSeq() + rseq;
 		} else {
-			newContigSeq = contig + rseq.substring(overlap);
+			newContigSeq = this.getSeq() + rseq.substring(overlap);
 		}
-		return new Contig(newContigSeq, nb_fusions + 1); // add 1 to nb_fusions
+		return new Contig(newContigSeq, this.getReadsCount() + 1); // add 1 to nb_fusions
+	}
+
+	// --- Getters & setters ---
+	@Override
+	public String toString() {
+		return contig;
+	}
+
+    @Override
+	public int getLength() {
+		return len;
+	}
+
+    @Override
+	public String getSeq() {
+		return contig;
+	}
+
+	public int getReadsCount() {
+		return nb_fusions;
 	}
 }
